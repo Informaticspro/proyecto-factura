@@ -60,6 +60,13 @@ const othersItems: NavItem[] = [
       { name: "Proyecciones", path: "/proyecciones", pro: false },
     ],
   },
+    {
+    icon: <PieChartIcon />, // 👈 puedes cambiar el ícono luego si quieres
+    name: "Herramientas",
+    subItems: [
+      { name: "Debug DB", path: "/debug", pro: false },
+    ],
+  },
 ];
 
 const AppSidebar: React.FC = () => {

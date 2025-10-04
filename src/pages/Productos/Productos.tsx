@@ -1,97 +1,256 @@
 import { useEffect, useState } from "react";
-import { insertarProducto, obtenerProductos, actualizarProducto, eliminarProducto } from "../../services/productosService";
-
-type Producto = {
-  id?: number;
-  codigo: string;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  cantidad: number;
-  unidad: string;
-};
+import {
+  listarProductos,
+  crearProducto,
+  actualizarProducto,
+  eliminarProducto,
+  Producto,
+} from "../../services/productosService";
 
 export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [form, setForm] = useState<Producto>({ codigo: "", nombre: "", descripcion: "", precio: 0, cantidad: 0, unidad: "" });
-  const [editId, setEditId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<{
+    nombre: string;
+    precio_costo: number | string;
+    precio_venta: number | string;
+    unidad_medida: string;
+    stock: number | string;
+  }>({
+    nombre: "",
+    precio_costo: "",
+    precio_venta: "",
+    unidad_medida: "unidad",
+    stock: "",
+  });
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
 
-  async function cargarProductos() {
-    const data = await obtenerProductos();
+  async function cargar() {
+    const data = await listarProductos();
     setProductos(data);
   }
 
   useEffect(() => {
-    cargarProductos();
+    cargar();
   }, []);
 
-  const guardar = async () => {
-    if (editId) {
-      await actualizarProducto(editId, form.nombre, form.descripcion, form.precio, form.cantidad, form.unidad);
-      setEditId(null);
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  async function handleSubmit() {
+    const precio_costo = Number(formData.precio_costo);
+    const precio_venta = Number(formData.precio_venta);
+    const stock = Number(formData.stock);
+
+    if (
+      !formData.nombre ||
+      precio_costo <= 0 ||
+      precio_venta <= 0 ||
+      stock < 0
+    ) {
+      setMensaje("⚠️ Todos los campos son obligatorios y deben ser válidos.");
+      return;
+    }
+
+    if (editandoId) {
+      await actualizarProducto({
+        ...formData,
+        id: editandoId,
+        precio_costo,
+        precio_venta,
+        stock,
+      });
+      setMensaje("✅ Producto actualizado con éxito");
     } else {
-      await insertarProducto(form.codigo, form.nombre, form.descripcion, form.precio, form.cantidad, form.unidad);
+      await crearProducto({
+        ...formData,
+        precio_costo,
+        precio_venta,
+        stock,
+      });
+      setMensaje("✅ Producto agregado con éxito");
     }
-    setForm({ codigo: "", nombre: "", descripcion: "", precio: 0, cantidad: 0, unidad: "" });
-    cargarProductos();
-  };
 
-  const editar = (prod: Producto) => {
-    setForm(prod);
-    setEditId(prod.id || null);
-  };
+    setFormData({
+      nombre: "",
+      precio_costo: "",
+      precio_venta: "",
+      unidad_medida: "unidad",
+      stock: "",
+    });
+    setEditandoId(null);
+    await cargar();
+    setTimeout(() => setMensaje(null), 3000);
+  }
 
-  const borrar = async (id?: number) => {
-    if (id) {
+  async function handleEditar(p: Producto) {
+    setFormData({
+      nombre: p.nombre,
+      precio_costo: p.precio_costo,
+      precio_venta: p.precio_venta,
+      unidad_medida: p.unidad_medida,
+      stock: p.stock,
+    });
+    setEditandoId(p.id || null);
+  }
+
+  async function handleEliminar(id: number) {
+    if (confirm("¿Seguro que quieres eliminar este producto?")) {
       await eliminarProducto(id);
-      cargarProductos();
+      await cargar();
+      setMensaje("🗑️ Producto eliminado");
+      setTimeout(() => setMensaje(null), 3000);
     }
-  };
+  }
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Gestión de Productos</h1>
+      <h1 className="text-2xl font-bold mb-6">Gestión de Productos</h1>
 
-      <div className="mb-4 grid grid-cols-2 gap-2">
-        <input placeholder="Código" value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} />
-        <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-        <input placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
-        <input type="number" placeholder="Precio" value={form.precio} onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) })} />
-        <input type="number" placeholder="Cantidad" value={form.cantidad} onChange={(e) => setForm({ ...form, cantidad: parseFloat(e.target.value) })} />
-        <input placeholder="Unidad" value={form.unidad} onChange={(e) => setForm({ ...form, unidad: e.target.value })} />
-        <button onClick={guardar} className="col-span-2 bg-blue-600 text-white py-2 rounded">
-          {editId ? "Actualizar" : "Agregar"}
-        </button>
+      {/* Mensajes */}
+      {mensaje && (
+        <div className="mb-4 p-3 rounded bg-blue-100 text-blue-800 text-sm">
+          {mensaje}
+        </div>
+      )}
+
+      {/* Formulario */}
+      <div className="bg-white shadow-md rounded p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-4">
+          {editandoId ? "Editar Producto" : "Agregar Producto"}
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre"
+            value={formData.nombre}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          />
+
+          <input
+            type="number"
+            name="precio_costo"
+            placeholder="Precio Costo"
+            value={formData.precio_costo}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          />
+
+          <input
+            type="number"
+            name="precio_venta"
+            placeholder="Precio Venta"
+            value={formData.precio_venta}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          />
+
+          <select
+            name="unidad_medida"
+            value={formData.unidad_medida}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          >
+            <option value="unidad">Unidad</option>
+            <option value="kilo">Kilo</option>
+            <option value="libra">Libra</option>
+          </select>
+
+          <input
+            type="number"
+            name="stock"
+            placeholder="Stock"
+            value={formData.stock}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          />
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={handleSubmit}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+          >
+            {editandoId ? "Actualizar" : "Agregar"}
+          </button>
+          {editandoId && (
+            <button
+              onClick={() => {
+                setFormData({
+                  nombre: "",
+                  precio_costo: "",
+                  precio_venta: "",
+                  unidad_medida: "unidad",
+                  stock: "",
+                });
+                setEditandoId(null);
+              }}
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
       </div>
 
-      <table className="w-full border">
+      {/* Tabla de productos */}
+      <table className="min-w-full bg-white border border-gray-200 shadow-md rounded">
         <thead>
-          <tr className="bg-gray-100">
-            <th>Código</th>
-            <th>Nombre</th>
-            <th>Descripción</th>
-            <th>Precio</th>
-            <th>Cantidad</th>
-            <th>Unidad</th>
-            <th>Acciones</th>
+          <tr className="bg-gray-100 text-left">
+            <th className="py-2 px-4 border-b">Nombre</th>
+            <th className="py-2 px-4 border-b">Costo</th>
+            <th className="py-2 px-4 border-b">Venta</th>
+            <th className="py-2 px-4 border-b">Unidad</th>
+            <th className="py-2 px-4 border-b">Stock</th>
+            <th className="py-2 px-4 border-b text-center">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {productos.map((p) => (
-            <tr key={p.id} className="border-t">
-              <td>{p.codigo}</td>
-              <td>{p.nombre}</td>
-              <td>{p.descripcion}</td>
-              <td>{p.precio}</td>
-              <td>{p.cantidad}</td>
-              <td>{p.unidad}</td>
-              <td>
-                <button onClick={() => editar(p)} className="text-yellow-600">Editar</button> |{" "}
-                <button onClick={() => borrar(p.id)} className="text-red-600">Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+  {productos.map((p) => (
+    <tr key={p.id} className="hover:bg-gray-50">
+      <td className="py-2 px-4 border-b">{p.nombre}</td>
+      <td className="py-2 px-4 border-b">
+        ${p.precio_costo !== undefined ? p.precio_costo.toFixed(2) : "0.00"}
+      </td>
+      <td className="py-2 px-4 border-b">
+        ${p.precio_venta !== undefined ? p.precio_venta.toFixed(2) : "0.00"}
+      </td>
+      <td className="py-2 px-4 border-b">{p.unidad_medida}</td>
+      <td className="py-2 px-4 border-b">{p.stock}</td>
+      <td className="py-2 px-4 border-b text-center space-x-2">
+        <button
+          onClick={() => handleEditar(p)}
+          className="bg-yellow-400 px-3 py-1 rounded text-white hover:bg-yellow-500 transition"
+        >
+          Editar
+        </button>
+        <button
+          onClick={() => handleEliminar(p.id!)}
+          className="bg-red-500 px-3 py-1 rounded text-white hover:bg-red-600 transition"
+        >
+          Eliminar
+        </button>
+      </td>
+    </tr>
+  ))}
+  {productos.length === 0 && (
+    <tr>
+      <td colSpan={6} className="text-center py-4 text-gray-500">
+        No hay productos registrados.
+      </td>
+    </tr>
+  )}
+</tbody>
       </table>
     </div>
   );

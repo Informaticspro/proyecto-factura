@@ -1,32 +1,53 @@
-import { getDBConnection } from "./database";
+import { openDB } from "idb";
 
-export async function insertarProducto(codigo: string, nombre: string, descripcion: string, precio: number, cantidad: number, unidad: string) {
-  const db = await getDBConnection();
-  await db.run(
-    "INSERT INTO productos (codigo, nombre, descripcion, precio, cantidad, unidad) VALUES (?, ?, ?, ?, ?, ?)",
-    [codigo, nombre, descripcion, precio, cantidad, unidad]
-  );
-  await db.close();
+// Definición de la interfaz Producto
+export interface Producto {
+  id?: number;
+  nombre: string;
+  precio_costo: number;   // 👈 nuevo campo
+  precio_venta: number;   // 👈 nuevo campo
+  unidad_medida: string;
+  stock: number;
+  creado_en?: string;
 }
 
-export async function obtenerProductos() {
-  const db = await getDBConnection();
-  const res = await db.query("SELECT * FROM productos");
-  await db.close();
-  return res.values || [];
+// Inicializa la base de datos
+async function getDB() {
+  return await openDB("facturacionDB", 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains("productos")) {
+        const store = db.createObjectStore("productos", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        // índices útiles para búsquedas
+        store.createIndex("nombre", "nombre", { unique: false });
+      }
+    },
+  });
 }
 
-export async function actualizarProducto(id: number, nombre: string, descripcion: string, precio: number, cantidad: number, unidad: string) {
-  const db = await getDBConnection();
-  await db.run(
-    "UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, cantidad = ?, unidad = ? WHERE id = ?",
-    [nombre, descripcion, precio, cantidad, unidad, id]
-  );
-  await db.close();
+// 📌 Crear producto
+export async function crearProducto(producto: Producto) {
+  const db = await getDB();
+  producto.creado_en = new Date().toISOString();
+  await db.add("productos", producto);
 }
 
+// 📌 Listar productos
+export async function listarProductos(): Promise<Producto[]> {
+  const db = await getDB();
+  return await db.getAll("productos");
+}
+
+// 📌 Actualizar producto
+export async function actualizarProducto(producto: Producto) {
+  const db = await getDB();
+  await db.put("productos", producto);
+}
+
+// 📌 Eliminar producto
 export async function eliminarProducto(id: number) {
-  const db = await getDBConnection();
-  await db.run("DELETE FROM productos WHERE id = ?", [id]);
-  await db.close();
+  const db = await getDB();
+  await db.delete("productos", id);
 }

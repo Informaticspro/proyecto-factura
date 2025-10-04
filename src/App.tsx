@@ -18,6 +18,9 @@ import Calendar from "./pages/Calendar";
 import UserProfiles from "./pages/UserProfiles";
 import NotFound from "./pages/OtherPage/NotFound";
 
+//temporal
+import DebugDB from "./pages/DebugDB";
+
 function App() {
   return (
     <Router>
@@ -43,6 +46,7 @@ function App() {
           {/* 🚀 Futuro (ya lo dejamos preparado) */}
           <Route path="/estadisticas" element={<div>Estadísticas (próximamente)</div>} />
           <Route path="/proyecciones" element={<div>Proyecciones (próximamente)</div>} />
+          <Route path="/debug" element={<DebugDB />} />
         </Route>
 
         {/* Fallback 404 */}
