@@ -1,53 +1,71 @@
-import { openDB } from "idb";
+import {
+  initSQLite,
+  insertarProducto,
+  obtenerProductos,
+  actualizarProducto,
+  eliminarProducto,
+} from "./sqliteService";
 
-// Definición de la interfaz Producto
 export interface Producto {
   id?: number;
   nombre: string;
-  precio_costo: number;   // 👈 nuevo campo
-  precio_venta: number;   // 👈 nuevo campo
+  precio_costo: number;
+  precio_venta: number;
   unidad_medida: string;
   stock: number;
   creado_en?: string;
 }
 
-// Inicializa la base de datos
-async function getDB() {
-  return await openDB("facturacionDB", 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains("productos")) {
-        const store = db.createObjectStore("productos", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-        // índices útiles para búsquedas
-        store.createIndex("nombre", "nombre", { unique: false });
-      }
-    },
+/* =======================================================
+   📋 Listar productos
+   ======================================================= */
+export async function listarProductos(): Promise<Producto[]> {
+  await initSQLite(); // asegura que la BD esté lista
+  const data = await obtenerProductos();
+  return data.map((p: any) => ({
+    id: p.id,
+    nombre: p.nombre,
+    precio_costo: p.precio_costo,
+    precio_venta: p.precio_venta,
+    unidad_medida: p.unidad_medida,
+    stock: p.stock,
+    creado_en: p.creado_en || new Date().toISOString(),
+  }));
+}
+
+/* =======================================================
+   ➕ Crear producto
+   ======================================================= */
+export async function crearProducto(p: Producto): Promise<void> {
+  await initSQLite();
+  await insertarProducto({
+    nombre: p.nombre,
+    precio_costo: Number(p.precio_costo),
+    precio_venta: Number(p.precio_venta),
+    unidad_medida: p.unidad_medida,
+    stock: Number(p.stock),
   });
 }
 
-// 📌 Crear producto
-export async function crearProducto(producto: Producto) {
-  const db = await getDB();
-  producto.creado_en = new Date().toISOString();
-  await db.add("productos", producto);
+/* =======================================================
+   ✏️ Actualizar producto
+   ======================================================= */
+export async function actualizarProductoServicio(p: Producto): Promise<void> {
+  if (!p.id) return;
+  await initSQLite();
+  await actualizarProducto(p.id, {
+    nombre: p.nombre,
+    precio_costo: Number(p.precio_costo),
+    precio_venta: Number(p.precio_venta),
+    unidad_medida: p.unidad_medida,
+    stock: Number(p.stock),
+  });
 }
 
-// 📌 Listar productos
-export async function listarProductos(): Promise<Producto[]> {
-  const db = await getDB();
-  return await db.getAll("productos");
-}
-
-// 📌 Actualizar producto
-export async function actualizarProducto(producto: Producto) {
-  const db = await getDB();
-  await db.put("productos", producto);
-}
-
-// 📌 Eliminar producto
-export async function eliminarProducto(id: number) {
-  const db = await getDB();
-  await db.delete("productos", id);
+/* =======================================================
+   ❌ Eliminar producto
+   ======================================================= */
+export async function eliminarProductoServicio(id: number): Promise<void> {
+  await initSQLite();
+  await eliminarProducto(id);
 }

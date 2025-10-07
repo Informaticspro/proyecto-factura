@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">proyecto-factura</string>
+    <string name="title_activity_main">proyecto-factura</string>
+    <string name="package_name">com.informaticsproservices.factura</string>
+    <string name="custom_url_scheme">com.informaticsproservices.factura</string>
+</resources>
