@@ -7,7 +7,7 @@ import {
   obtenerVentasResumen,
   obtenerDetalleDeVenta,
   type Producto,
-} from '../../services/sqliteService';
+} from '../../services/db';
 
 // Formateo simple de moneda
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;

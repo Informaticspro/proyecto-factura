@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ejecutarConsulta, initSQLite } from "../services/sqliteService";
+import { ejecutarConsulta, initSQLite } from "../services/db";
 
 interface Producto {
   id?: number;

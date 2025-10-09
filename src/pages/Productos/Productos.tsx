@@ -5,7 +5,7 @@ import {
   actualizarProducto,
   eliminarProducto,
   initSQLite,
-} from "../../services/sqliteService";
+} from "../../services/db";
 
 interface Producto {
   id?: number;
