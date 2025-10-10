@@ -30,7 +30,8 @@ export default function Productos() {
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
-
+  const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
+const [mostrarMenu, setMostrarMenu] = useState(false);
   // 🔹 Inicializar BD y cargar productos
   useEffect(() => {
     (async () => {
@@ -243,55 +244,106 @@ export default function Productos() {
         </div>
       </form>
 
-      {/* Tabla */}
-      <table className="min-w-full bg-white border border-gray-200 shadow-md rounded">
-        <thead>
-          <tr className="bg-gray-100 text-left">
-            <th className="py-2 px-4 border-b">Nombre</th>
-            <th className="py-2 px-4 border-b text-center">Costo</th>
-            <th className="py-2 px-4 border-b text-center">Venta</th>
-            <th className="py-2 px-4 border-b text-center">Unidad</th>
-            <th className="py-2 px-4 border-b text-center">Stock</th>
-            <th className="py-2 px-4 border-b text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtrados.map((p) => (
-            <tr key={p.id} className="hover:bg-gray-50">
-              <td className="py-2 px-4 border-b">{p.nombre}</td>
-              <td className="py-2 px-4 border-b text-center">
-                ${Number(p.precio_costo || 0).toFixed(2)}
-              </td>
-              <td className="py-2 px-4 border-b text-center text-green-700">
-                ${Number(p.precio_venta || 0).toFixed(2)}
-              </td>
-              <td className="py-2 px-4 border-b text-center">{p.unidad_medida}</td>
-              <td className="py-2 px-4 border-b text-center">{p.stock}</td>
-              <td className="py-2 px-4 border-b text-center space-x-2">
-                <button
-                  onClick={() => handleEditar(p)}
-                  className="bg-yellow-400 px-3 py-1 rounded text-white hover:bg-yellow-500 transition"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleEliminar(p.id!)}
-                  className="bg-red-500 px-3 py-1 rounded text-white hover:bg-red-600 transition"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filtrados.length === 0 && (
-            <tr>
-              <td colSpan={6} className="text-center py-4 text-gray-500">
-                No hay productos registrados.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+     {/* Tabla */}
+<div className="overflow-x-auto overflow-y-auto max-h-[50vh] w-full scroll-suave rounded-lg">
+  <table className="min-w-full bg-white border border-gray-200 shadow-md rounded">
+    <thead>
+      <tr className="border-b bg-gray-50 text-left">
+        <th className="py-2 px-4 border-b">Nombre</th>
+        <th className="py-2 px-4 border-b text-center">Costo</th>
+        <th className="py-2 px-4 border-b text-center">Venta</th>
+        <th className="py-2 px-4 border-b text-center">Unidad</th>
+        <th className="py-2 px-4 border-b text-center">Stock</th>
+        <th className="py-2 px-4 border-b text-center">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {filtrados.map((p) => (
+        <tr
+  key={p.id}
+  className="hover:bg-indigo-50 cursor-pointer transition-all"
+  onClick={() => {
+    // Solo mostrar el menú si es móvil
+    if (window.innerWidth < 768) {
+      setProductoSeleccionado(p);
+      setMostrarMenu(true);
+    }
+  }}
+>
+
+          <td className="py-2 px-4 border-b">{p.nombre}</td>
+          <td className="py-2 px-4 border-b text-center">
+            ${Number(p.precio_costo || 0).toFixed(2)}
+          </td>
+          <td className="py-2 px-4 border-b text-center text-green-700">
+            ${Number(p.precio_venta || 0).toFixed(2)}
+          </td>
+          <td className="py-2 px-4 border-b text-center">{p.unidad_medida}</td>
+          <td className="py-2 px-4 border-b text-center">{p.stock}</td>
+          <td className="py-2 px-4 border-b text-center space-x-2">
+            <button
+              onClick={() => handleEditar(p)}
+              className="bg-yellow-400 px-3 py-1 rounded text-white hover:bg-yellow-500 transition"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => handleEliminar(p.id!)}
+              className="bg-red-500 px-3 py-1 rounded text-white hover:bg-red-600 transition"
+            >
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      ))}
+      {filtrados.length === 0 && (
+        <tr>
+          <td colSpan={6} className="text-center py-4 text-gray-500">
+            No hay productos registrados.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+  {mostrarMenu && productoSeleccionado && (
+  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-lg p-5 w-full max-w-xs text-center animate-fadeIn">
+      <h3 className="text-lg font-semibold mb-4 text-gray-800">
+        {productoSeleccionado.nombre}
+      </h3>
+
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => {
+            handleEditar(productoSeleccionado);
+            setMostrarMenu(false);
+          }}
+          className="bg-yellow-400 hover:bg-yellow-500 text-white py-2 rounded-xl transition"
+        >
+          ✏️ Editar
+        </button>
+
+        <button
+          onClick={() => {
+            handleEliminar(productoSeleccionado.id!);
+            setMostrarMenu(false);
+          }}
+          className="bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl transition"
+        >
+          🗑️ Eliminar
+        </button>
+
+        <button
+          onClick={() => setMostrarMenu(false)}
+          className="mt-2 text-gray-600 hover:text-gray-900"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
+  </div>
+)}
+</div>
+ </div> 
   );
 }

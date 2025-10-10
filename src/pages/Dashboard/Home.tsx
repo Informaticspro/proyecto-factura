@@ -1,9 +1,9 @@
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import VentasDiarias from "../../components/ecommerce/VentasDiarias";
-import StatisticsChart from "../../components/ecommerce/StatisticsChart";
+
 import MonthlyTarget from "../../components/ecommerce/MonthlyTarget";
 import RecentOrders from "../../components/ecommerce/RecentOrders";
-import DemographicCard from "../../components/ecommerce/DemographicCard";
+import VentasYStock from "../../components/ecommerce/VentasYStock";
 import PageMeta from "../../components/common/PageMeta";
 import EstadisticasAnuales from "../../components/ecommerce/EstadisticasAnuales";
 
@@ -20,17 +20,17 @@ export default function Home() {
 
           <VentasDiarias />
         </div>
-
         <div className="col-span-12 xl:col-span-5">
-          <MonthlyTarget />
+          <VentasYStock/>
         </div>
+       
 
         <div className="col-span-12">
           <EstadisticasAnuales />
         </div>
 
         <div className="col-span-12 xl:col-span-5">
-          <DemographicCard />
+          <MonthlyTarget />
         </div>
 
         <div className="col-span-12 xl:col-span-7">

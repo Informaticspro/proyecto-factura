@@ -166,85 +166,101 @@ export default function Ventas() {
           </div>
         </div>
 
-        {/* Resultados rápidos */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        {/* Lista de productos */}
+       <div className="mt-4 grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-2">
           {resultados.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => agregarAlCarrito(p)}
-              className="flex items-center justify-between rounded-lg border px-3 py-2 hover:shadow"
-              title={`Stock: ${p.stock}`}
-            >
-              <span className="truncate">{p.nombre}</span>
-              <span className="text-sm opacity-70">{money(p.precio_venta)}</span>
-            </button>
+                <button
+      key={p.id}
+      onClick={() => agregarAlCarrito(p)}
+      className="flex flex-col items-center justify-center text-center rounded-lg border border-gray-200 
+                 p-2 md:p-3 bg-white hover:bg-emerald-50 active:scale-95 transition shadow-sm"
+      title={`Agregar ${p.nombre}`}
+    >
+      <span className="font-medium text-gray-800 text-xs md:text-sm truncate w-full">
+        {p.nombre}
+      </span>
+      <span className="text-emerald-600 font-semibold text-xs md:text-sm mt-1">
+        {money(p.precio_venta)}
+      </span>
+    </button>
           ))}
         </div>
       </div>
 
-      {/* Carrito */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm mb-6">
-        <h2 className="text-lg font-semibold mb-3">Carrito</h2>
-        {carrito.length === 0 ? (
-          <p className="text-sm opacity-70">Aún no has agregado productos.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left">
-                  <th className="p-2">Producto</th>
-                  <th className="p-2">Cantidad</th>
-                  <th className="p-2">$ Unit</th>
-                  <th className="p-2">$ Subtotal</th>
-                  <th className="p-2 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carrito.map((it) => (
-                  <tr key={it.key} className="border-b last:border-0">
-                    <td className="p-2">{it.nombre}</td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min={0.01}
-                        value={it.cantidad}
-                        onChange={(e) => actualizarCantidad(it.key, Number(e.target.value))}
-                        className="w-28 rounded border px-2 py-1"
-                      />
-                    </td>
-                    <td className="p-2">{money(it.precio_unitario)}</td>
-                    <td className="p-2">{money(it.cantidad * it.precio_unitario)}</td>
-                    <td className="p-2 text-right">
-                      <button
-                        onClick={() => removerItem(it.key)}
-                        className="rounded-lg border px-3 py-1 hover:bg-gray-50"
-                      >
-                        Quitar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td className="p-2 font-semibold" colSpan={3}>Total</td>
-                  <td className="p-2 font-semibold">{money(total)}</td>
-                  <td className="p-2 text-right">
-                    <button
-                      onClick={onRegistrarVenta}
-                      disabled={carrito.length === 0}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Registrar venta
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
+{/* 🛒 Carrito */}
+<div
+  className={`rounded-xl border bg-white p-4 shadow-sm mb-6 flex flex-col transition-all duration-300 ${
+    carrito.length > 0 ? "h-[70vh]" : "h-auto"
+  }`}
+>
+  <h2 className="text-lg font-semibold mb-3">Carrito</h2>
+
+  {carrito.length === 0 ? (
+    <p className="text-sm opacity-70">Aún no has agregado productos.</p>
+  ) : (
+    <>
+      {/* Contenedor con scroll interno */}
+      <div className="flex-1 overflow-y-auto border-t border-b mb-3">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+            <tr className="border-b text-left">
+              <th className="p-2">Producto</th>
+              <th className="p-2">Cantidad</th>
+              <th className="p-2 text-center">$ Unit</th>
+              <th className="p-2 text-center">$ Subtotal</th>
+              <th className="p-2 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carrito.map((it) => (
+              <tr key={it.key} className="border-b last:border-0">
+                <td className="p-2">{it.nombre}</td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0.01}
+                    value={it.cantidad}
+                    onChange={(e) =>
+                      actualizarCantidad(it.key, Number(e.target.value))
+                    }
+                    className="w-24 rounded border px-2 py-1 text-center"
+                  />
+                </td>
+                <td className="p-2 text-center">{money(it.precio_unitario)}</td>
+                <td className="p-2 text-center">
+                  {money(it.cantidad * it.precio_unitario)}
+                </td>
+                <td className="p-2 text-right">
+                  <button
+                    onClick={() => removerItem(it.key)}
+                    className="rounded-lg border px-3 py-1 hover:bg-gray-50"
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      {/* Fila fija de total */}
+      <div className="sticky bottom-0 left-0 bg-white border-t pt-3 flex justify-between items-center z-20 shadow-sm">
+        <div className="font-semibold text-lg">
+          Total: <span className="text-emerald-700">{money(total)}</span>
+        </div>
+        <button
+          onClick={onRegistrarVenta}
+          disabled={carrito.length === 0}
+          className="rounded-xl bg-emerald-600 px-4 py-2 text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Registrar venta
+        </button>
+      </div>
+    </>
+  )}
+</div>
 
       {/* Historial de ventas */}
       <div className="rounded-xl border bg-white p-4 shadow-sm">

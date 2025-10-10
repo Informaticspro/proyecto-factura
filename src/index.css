@@ -775,4 +775,49 @@ span.flatpickr-weekday,
 
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
+
+}
+
+
+
+
+
+
+/* 🚫 Evitar desplazamiento horizontal */
+html,
+body {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+  overscroll-behavior-x: none;
+}
+
+/* 🔹 Asegurar fondo y altura completa */
+body {
+  background-color: #f9fafb; /* gris suave */
+  min-height: 100vh;
+}
+/* 🌿 Desplazamiento suave tipo app móvil */
+html,
+body {
+  scroll-behavior: smooth;             /* desplazamiento fluido */
+  -webkit-overflow-scrolling: touch;   /* efecto rebote en iOS/Android */
+  overscroll-behavior-y: contain;      /* evita el "rebote" doble o saltos */
+}
+/* 🌿 Scroll táctil y sin barra visible (ideal para tablas anchas en móvil) */
+.scroll-suave {
+  -webkit-overflow-scrolling: touch; /* desplazamiento fluido tipo app */
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* oculta la barra en Firefox */
+}
+
+.scroll-suave::-webkit-scrollbar {
+  display: none; /* oculta la barra en Chrome/Safari */
+}
+keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
 }
