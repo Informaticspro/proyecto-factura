@@ -13,6 +13,7 @@ import Finanzas from "./pages/Finanzas/Finanzas";
 import Reportes from "./pages/Reportes/Reportes";
 import Configuracion from "./pages/Configuracion/Configuracion";
 
+
 // ✅ Extra
 import Calendar from "./pages/Calendar";
 import UserProfiles from "./pages/UserProfiles";

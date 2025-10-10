@@ -1,141 +1,90 @@
-import Chart from "react-apexcharts";
-import { ApexOptions } from "apexcharts";
-import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import { MoreDotIcon } from "../../icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ejecutarConsulta, isNative, dexieDB } from "../../services/db";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 export default function MonthlySalesChart() {
-  const options: ApexOptions = {
-    colors: ["#465fff"],
-    chart: {
-      fontFamily: "Outfit, sans-serif",
-      type: "bar",
-      height: 180,
-      toolbar: {
-        show: false,
-      },
-    },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: "39%",
-        borderRadius: 5,
-        borderRadiusApplication: "end",
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      show: true,
-      width: 4,
-      colors: ["transparent"],
-    },
-    xaxis: {
-      categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
-      axisBorder: {
-        show: false,
-      },
-      axisTicks: {
-        show: false,
-      },
-    },
-    legend: {
-      show: true,
-      position: "top",
-      horizontalAlign: "left",
-      fontFamily: "Outfit",
-    },
-    yaxis: {
-      title: {
-        text: undefined,
-      },
-    },
-    grid: {
-      yaxis: {
-        lines: {
-          show: true,
-        },
-      },
-    },
-    fill: {
-      opacity: 1,
-    },
+  const [datos, setDatos] = useState<any[]>([]);
 
-    tooltip: {
-      x: {
-        show: false,
-      },
-      y: {
-        formatter: (val: number) => `${val}`,
-      },
-    },
-  };
-  const series = [
-    {
-      name: "Sales",
-      data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
-    },
-  ];
-  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    async function cargarVentas() {
+      if (isNative) {
+        // 📱 Modo SQLite
+        const sql = `
+          SELECT
+            strftime('%m', fecha) AS mes,
+            SUM(total) AS total
+          FROM ventas
+          GROUP BY mes
+          ORDER BY mes;
+        `;
+        const res = await ejecutarConsulta(sql);
+        procesarDatos(res);
+      } else {
+        // 🌐 Modo navegador (Dexie)
+        const ventas = await dexieDB.table("ventas").toArray();
 
-  function toggleDropdown() {
-    setIsOpen(!isOpen);
-  }
+        // Agrupar por mes
+        const agrupadas: Record<string, number> = {};
+        ventas.forEach((v) => {
+          const mes = new Date(v.fecha).getMonth(); // 0-11
+          agrupadas[mes] = (agrupadas[mes] || 0) + (v.total || 0);
+        });
 
-  function closeDropdown() {
-    setIsOpen(false);
-  }
+        // Convertir a formato del gráfico
+        const nombresMeses = [
+          "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+          "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+        ];
+
+        const res = Object.keys(agrupadas)
+          .map((m) => ({
+            mes: nombresMeses[Number(m)],
+            total: Number(agrupadas[m].toFixed(2)),
+          }))
+          .sort(
+            (a, b) =>
+              nombresMeses.indexOf(a.mes) - nombresMeses.indexOf(b.mes)
+          );
+
+        setDatos(res);
+      }
+    }
+
+    function procesarDatos(res: any[]) {
+      const nombresMeses = [
+        "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+      ];
+      const datosFormateados = res.map((r) => ({
+        mes: nombresMeses[Number(r.mes) - 1],
+        total: Number(r.total),
+      }));
+      setDatos(datosFormateados);
+    }
+
+    cargarVentas();
+  }, []);
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-          Monthly Sales
-        </h3>
-        <div className="relative inline-block">
-          <button className="dropdown-toggle" onClick={toggleDropdown}>
-            <MoreDotIcon className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 size-6" />
-          </button>
-          <Dropdown
-            isOpen={isOpen}
-            onClose={closeDropdown}
-            className="w-40 p-2"
-          >
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-            >
-              View More
-            </DropdownItem>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-            >
-              Delete
-            </DropdownItem>
-          </Dropdown>
-        </div>
-      </div>
-
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-          <Chart options={options} series={series} type="bar" height={180} />
-        </div>
-      </div>
+    <div className="rounded-lg bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold mb-3">Ventas mensuales</h2>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={datos} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="mes" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="total" fill="#4F46E5" radius={[6, 6, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

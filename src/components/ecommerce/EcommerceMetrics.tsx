@@ -1,59 +1,86 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  BoxIconLine,
-  GroupIcon,
-} from "../../icons";
-import Badge from "../ui/badge/Badge";
+import { useEffect, useState } from "react";
+import { ejecutarConsulta, isNative, dexieDB } from "../../services/db";
 
 export default function EcommerceMetrics() {
+  const [resumen, setResumen] = useState({
+    ingresos: 0,
+    costos: 0,
+    ganancia: 0,
+    productos: 0,
+  });
+
+  useEffect(() => {
+    async function cargarDatos() {
+      try {
+        if (isNative) {
+          // 📦 Modo SQLite nativo → usa SQL real
+          const sql = `
+            SELECT 
+              (SELECT IFNULL(SUM(total), 0) FROM ventas) AS ingresos,
+              (SELECT IFNULL(SUM(p.precio_costo * dv.cantidad), 0)
+               FROM detalle_ventas dv
+               JOIN productos p ON p.id = dv.producto_id) AS costos,
+              (SELECT COUNT(*) FROM productos) AS productos;
+          `;
+          const res = await ejecutarConsulta(sql);
+          const r = res[0];
+          setResumen({
+            ingresos: r.ingresos,
+            costos: r.costos,
+            ganancia: r.ingresos - r.costos,
+            productos: r.productos,
+          });
+        } else {
+  // 🌐 Modo navegador (Dexie)
+const ventas = await dexieDB.table("ventas").toArray();
+const detalle = await dexieDB.table("detalle_ventas").toArray();
+const productos = await dexieDB.table("productos").toArray();
+
+const ingresos = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
+
+// 💡 Calcular costos reales usando el precio_costo del producto
+const costos = detalle.reduce((acc, d) => {
+  const producto = productos.find((p) => p.id === d.producto_id);
+  return acc + ((producto?.precio_costo || 0) * (d.cantidad || 0));
+}, 0);
+
+setResumen({
+  ingresos,
+  costos,
+  ganancia: ingresos - costos,
+  productos: productos.length,
+});
+        }
+      } catch (e) {
+        console.error("Error cargando métricas:", e);
+      }
+    }
+    cargarDatos();
+  }, []);
+
+  const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
-      {/* <!-- Metric Item Start --> */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-        <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
-          <GroupIcon className="text-gray-800 size-6 dark:text-white/90" />
-        </div>
-
-        <div className="flex items-end justify-between mt-5">
-          <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Customers
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
-            </h4>
-          </div>
-          <Badge color="success">
-            <ArrowUpIcon />
-            11.01%
-          </Badge>
-        </div>
+    <div className="grid grid-cols-4 gap-4">
+      <div className="rounded-lg bg-white p-3 shadow flex flex-col items-center justify-center text-center min-w-[90px] max-w-[120px] overflow-hidden">
+        <h2 className="text-xs font-medium text-gray-600 truncate w-full">Ingresos Totales</h2>
+        <p className="text-2xl font-bold text-green-600">{money(resumen.ingresos)}</p>
       </div>
-      {/* <!-- Metric Item End --> */}
 
-      {/* <!-- Metric Item Start --> */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-        <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
-          <BoxIconLine className="text-gray-800 size-6 dark:text-white/90" />
-        </div>
-        <div className="flex items-end justify-between mt-5">
-          <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Orders
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              5,359
-            </h4>
-          </div>
-
-          <Badge color="error">
-            <ArrowDownIcon />
-            9.05%
-          </Badge>
-        </div>
+      <div className="rounded-lg bg-white p-3 shadow flex flex-col items-center justify-center text-center min-w-[90px] max-w-[120px] overflow-hidden">
+        <h2 className="text-xs font-medium text-gray-600 truncate w-full">Costos</h2>
+        <p className="text-2xl font-bold text-red-600">{money(resumen.costos)}</p>
       </div>
-      {/* <!-- Metric Item End --> */}
+
+      <div className="rounded-lg bg-white p-3 shadow flex flex-col items-center justify-center text-center min-w-[90px] max-w-[120px] overflow-hidden">
+        <h2 className="text-xs font-medium text-gray-600 truncate w-full">Ganancia</h2>
+        <p className="text-2xl font-bold text-blue-600">{money(resumen.ganancia)}</p>
+      </div>
+
+      <div className="rounded-lg bg-white p-3 shadow flex flex-col items-center justify-center text-center min-w-[90px] max-w-[120px] overflow-hidden">
+        <h2 className="text-xs font-medium text-gray-600 truncate w-full">Productos Registrados</h2>
+        <p className="text-2xl font-bold text-purple-600">{resumen.productos}</p>
+      </div>
     </div>
   );
 }

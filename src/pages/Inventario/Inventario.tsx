@@ -16,7 +16,7 @@ export default function Inventario() {
 
   const [productoId, setProductoId] = useState<number | "">("");
   const [tipo, setTipo] = useState<"entrada" | "salida">("entrada");
-  const [cantidad, setCantidad] = useState<number>(0);
+  const [cantidad, setCantidad] = useState<string>("");
   const [motivo, setMotivo] = useState("");
 
   // Cargar datos
@@ -37,14 +37,15 @@ export default function Inventario() {
   }, []);
 
   async function manejarMovimiento() {
-    if (!productoId || cantidad <= 0) {
+    const cantidadNum = parseFloat(cantidad) || 0;
+    if (!productoId || cantidadNum <= 0) {
       setError("Selecciona un producto y una cantidad válida");
       return;
     }
 
     try {
-      await registrarMovimientoInventario(productoId, tipo, cantidad, motivo);
-      setCantidad(0);
+      await registrarMovimientoInventario(productoId, tipo, cantidadNum, motivo);
+      setCantidad("");
       setMotivo("");
       setProductoId("");
       const prods = await obtenerProductos();
@@ -107,13 +108,15 @@ export default function Inventario() {
           <div>
             <label className="block text-sm font-medium mb-1">Cantidad</label>
             <input
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={cantidad}
-              onChange={(e) => setCantidad(Number(e.target.value))}
-              className="w-full rounded-lg border px-3 py-2"
-            />
+  type="number"
+  placeholder="0"
+  value={cantidad}
+  onChange={(e) => {
+    const val = e.target.value;
+    setCantidad(val === "" ? "" : val); // permite borrar todo
+  }}
+  className="border rounded-lg p-2 w-full"
+/>
           </div>
 
           <div>
