@@ -3,6 +3,7 @@ import { db, isNative, dexieDB } from "./database";
 export type Producto = {
   id: number;
   nombre: string;
+  categoria?: string| null;
   precio_costo: number;
   precio_venta: number;
   unidad_medida: string;
@@ -14,10 +15,11 @@ export async function insertarProducto(producto: Omit<Producto, "id">) {
   if (isNative) {
     if (!db) return;
     await db.run(
-      `INSERT INTO productos (nombre, precio_costo, precio_venta, unidad_medida, stock)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO productos (nombre, categoria, precio_costo, precio_venta, unidad_medida, stock)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         producto.nombre,
+        producto.categoria ?? null, // 👈 corregido aquí
         producto.precio_costo,
         producto.precio_venta,
         producto.unidad_medida,
@@ -25,7 +27,10 @@ export async function insertarProducto(producto: Omit<Producto, "id">) {
       ]
     );
   } else {
-    await dexieDB.table("productos").add(producto);
+    await dexieDB.table("productos").add({
+      ...producto,
+      categoria: producto.categoria ?? null, // 👈 igual aquí
+    });
   }
 }
 
@@ -41,7 +46,7 @@ export async function obtenerProductos(): Promise<Producto[]> {
 }
 
 // ✏️ Actualizar
-export async function actualizarProducto(id: number, campos: Partial<Producto>) {
+export async function actualizarProducto(id: number, campos: Partial<Omit<Producto, "id">>) {
   if (isNative) {
     if (!db) return;
     const keys = Object.keys(campos);
@@ -52,7 +57,10 @@ export async function actualizarProducto(id: number, campos: Partial<Producto>) 
       id,
     ]);
   } else {
-    await dexieDB.table("productos").update(id, campos);
+    await dexieDB.table("productos").update(id, {
+      ...campos,
+      categoria: campos.categoria ?? null, // 👈 agregado aquí también
+    });
   }
 }
 

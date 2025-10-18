@@ -30,6 +30,7 @@
     "flatpickr": "^4.6.13",
     "framer-motion": "^12.23.22",
     "idb": "^8.0.3",
+    "lucide-react": "^0.545.0",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
     "react-dnd": "^16.0.1",

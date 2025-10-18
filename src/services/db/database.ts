@@ -10,17 +10,17 @@ export const DB_NAME = "facturacionDB";
 export let db: SQLiteDBConnection | null = null;
 export const isNative = Capacitor.isNativePlatform();
 
+
 /* =======================================================
    🌐 Dexie (fallback web)
    ======================================================= */
 export const dexieDB = new Dexie(DB_NAME);
-dexieDB.version(3).stores({
-  productos: "++id, nombre, precio_costo, precio_venta, unidad_medida, stock",
+dexieDB.version(4).stores({
+  productos: "++id, nombre, categoria, precio_costo, precio_venta, unidad_medida, stock",
+  categorias: "++id, nombre",
   ventas: "++id, fecha, total",
-  detalle_ventas:
-    "++id, venta_id, producto_id, cantidad, precio_unitario, subtotal",
-  movimientos_inventario:
-    "++id, producto_id, tipo, cantidad, fecha, motivo",
+  detalle_ventas: "++id, venta_id, producto_id, cantidad, precio_unitario, subtotal",
+  movimientos_inventario: "++id, producto_id, tipo, cantidad, fecha, motivo",
 });
 dexieDB.open().then(() => console.log("✅ Dexie inicializada"));
 
@@ -43,16 +43,23 @@ export async function initSQLite() {
     await db.open();
 
     // Crear tablas principales si no existen
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS productos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        precio_costo REAL NOT NULL,
-        precio_venta REAL NOT NULL,
-        unidad_medida TEXT,
-        stock INTEGER DEFAULT 0
-      );
-    `);
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS productos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    categoria TEXT,                
+    precio_costo REAL NOT NULL,
+    precio_venta REAL NOT NULL,
+    unidad_medida TEXT,
+    stock INTEGER DEFAULT 0
+  );
+`);
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS categorias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL
+  );
+`);
 
     await db.execute(`
       CREATE TABLE IF NOT EXISTS ventas (
@@ -114,5 +121,25 @@ export async function cerrarConexion() {
   if (isNative && db) {
     await db.close();
     console.log("🔒 Conexión SQLite cerrada");
+  }
+}
+// 📦 Categorías
+export async function obtenerCategorias() {
+  if (isNative) {
+    if (!db) return [];
+    const res = await db.query("SELECT * FROM categorias ORDER BY nombre ASC");
+    return res.values ?? [];
+  } else {
+    return await dexieDB.table("categorias").orderBy("nombre").toArray();
+  }
+}
+
+export async function insertarCategoria(nombre: string) {
+  if (!nombre.trim()) return;
+  if (isNative) {
+    if (!db) return;
+    await db.run(`INSERT OR IGNORE INTO categorias (nombre) VALUES (?)`, [nombre]);
+  } else {
+    await dexieDB.table("categorias").put({ nombre });
   }
 }

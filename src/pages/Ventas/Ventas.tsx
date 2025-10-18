@@ -6,6 +6,7 @@ import {
   registrarVenta,
   obtenerVentasResumen,
   obtenerDetalleDeVenta,
+  obtenerCategorias,
   type Producto,
 } from '../../services/db';
 
@@ -33,6 +34,16 @@ export default function Ventas() {
   const [ventas, setVentas] = useState<{ id: number; fecha: string; total: number; items: number }[]>([]);
   const [ventaExpandida, setVentaExpandida] = useState<number | null>(null);
   const [detallesVenta, setDetallesVenta] = useState<Record<number, any[]>>({});
+  const [categorias, setCategorias] = useState<string[]>([]);
+const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
+const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+
+useEffect(() => {
+  (async () => {
+    const cats = await obtenerCategorias();
+    setCategorias(cats.map(c => c.nombre));
+  })();
+}, []);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -52,17 +63,23 @@ export default function Ventas() {
     })();
   }, []);
 
-  // Filtro de productos por buscador
-  const resultados = useMemo(() => {
-    const q = buscador.trim().toLowerCase();
-    if (!q) return productos.slice(0, 15);
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q)).slice(0, 25);
-  }, [buscador, productos]);
+ 
+
+
 
   const total = useMemo(
     () => carrito.reduce((acc, it) => acc + it.cantidad * it.precio_unitario, 0),
     [carrito]
   );
+  const productosFiltrados = useMemo(() => {
+  const q = buscador.trim().toLowerCase();
+  return productos
+    .filter((p) =>
+      (!categoriaSeleccionada || p.categoria === categoriaSeleccionada) &&
+      (!q || p.nombre.toLowerCase().includes(q))
+    )
+    .slice(0, 30);
+}, [buscador, productos, categoriaSeleccionada]);
 
   function agregarAlCarrito(p: Producto) {
     setCarrito((prev) => {
@@ -166,9 +183,35 @@ export default function Ventas() {
           </div>
         </div>
 
+ {/* Filtro de categorías */}
+<div className="flex flex-wrap gap-2 mb-3">
+  <button
+    onClick={() => setCategoriaSeleccionada(null)}
+    className={`px-3 py-1 rounded-full border text-sm ${
+      categoriaSeleccionada === null
+        ? "bg-emerald-600 text-white"
+        : "bg-white hover:bg-emerald-50"
+    }`}
+  >
+    Todas
+  </button>
+  {categorias.map((cat) => (
+    <button
+      key={cat}
+      onClick={() => setCategoriaSeleccionada(cat)}
+      className={`px-3 py-1 rounded-full border text-sm ${
+        categoriaSeleccionada === cat
+          ? "bg-emerald-600 text-white"
+          : "bg-white hover:bg-emerald-50"
+      }`}
+    >
+      {cat}
+    </button>
+  ))}
+</div>
         {/* Lista de productos */}
        <div className="mt-4 grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-2">
-          {resultados.map((p) => (
+         {productosFiltrados.map((p) => (
                 <button
       key={p.id}
       onClick={() => agregarAlCarrito(p)}
@@ -188,18 +231,28 @@ export default function Ventas() {
       </div>
 
 {/* 🛒 Carrito */}
-<div
-  className={`rounded-xl border bg-white p-4 shadow-sm mb-6 flex flex-col transition-all duration-300 ${
-    carrito.length > 0 ? "h-[70vh]" : "h-auto"
-  }`}
->
-  <h2 className="text-lg font-semibold mb-3">Carrito</h2>
+<div className="p-4 bg-white rounded-lg shadow">
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="text-lg font-semibold">Carrito</h2>
+
+    <div className="flex items-center gap-3">
+      <span className="text-sm font-semibold text-gray-700">
+        Total: <span className="text-emerald-600">${total.toFixed(2)}</span>
+      </span>
+      <button
+        onClick={() => setMostrarConfirmacion(true)}
+        disabled={carrito.length === 0}
+        className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-50"
+      >
+        Registrar venta
+      </button>
+    </div>
+  </div>
 
   {carrito.length === 0 ? (
     <p className="text-sm opacity-70">Aún no has agregado productos.</p>
   ) : (
     <>
-      {/* Contenedor con scroll interno */}
       <div className="flex-1 overflow-y-auto border-t border-b mb-3">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
@@ -244,23 +297,40 @@ export default function Ventas() {
           </tbody>
         </table>
       </div>
-
-      {/* Fila fija de total */}
-      <div className="sticky bottom-0 left-0 bg-white border-t pt-3 flex justify-between items-center z-20 shadow-sm">
-        <div className="font-semibold text-lg">
-          Total: <span className="text-emerald-700">{money(total)}</span>
-        </div>
-        <button
-          onClick={onRegistrarVenta}
-          disabled={carrito.length === 0}
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Registrar venta
-        </button>
-      </div>
     </>
   )}
+
+  {/* Modal de confirmación */}
+  {mostrarConfirmacion && (
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+      <div className="bg-white p-6 rounded-xl shadow-lg w-80">
+        <h2 className="text-lg font-semibold mb-3 text-center">Confirmar venta</h2>
+        <p className="text-sm text-gray-600 mb-4 text-center">
+          Total: <b>${total.toFixed(2)}</b><br /><br />
+          ¿Estás seguro de registrar esta venta?
+        </p>
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => setMostrarConfirmacion(false)}
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              onRegistrarVenta();
+              setMostrarConfirmacion(false);
+            }}
+            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 </div>
+
 
       {/* Historial de ventas */}
       <div className="rounded-xl border bg-white p-4 shadow-sm">
@@ -335,6 +405,6 @@ export default function Ventas() {
           </div>
         )}
       </div>
-    </div>
+   </div>   // 🔹 este cierre adicional
   );
 }

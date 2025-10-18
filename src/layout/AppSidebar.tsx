@@ -1,70 +1,80 @@
+// src/layout/AppSidebar.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-
 import {
-  GridIcon,
-  CalenderIcon,
-  UserCircleIcon,
-  ListIcon,
-  PieChartIcon,
-  HorizontaLDots,
-} from "../icons";
+  Home,
+  ShoppingCart,
+  Package,
+  BarChart,
+  DollarSign,
+  FileText,
+  Settings,
+  Wrench,
+  PieChart,
+  MoreHorizontal,
+} from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
-
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  subItems?: { name: string; path: string }[];
 };
 
-// 📌 Menú principal
+/* ============================================================
+   📋 MENÚ PRINCIPAL PERSONALIZADO
+   ============================================================ */
 const navItems: NavItem[] = [
+  { icon: <Home />, name: "Inicio", path: "/" },
   {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    subItems: [{ name: "Inicio", path: "/", pro: false }],
-  },
-  {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "Perfil",
-    path: "/profile",
-  },
-  {
-    name: "Gestión",
-    icon: <ListIcon />,
+    icon: <ShoppingCart />,
+    name: "Ventas",
     subItems: [
-      { name: "Productos", path: "/productos", pro: false },
-      { name: "Ventas", path: "/ventas", pro: false },
-      { name: "Inventario", path: "/inventario", pro: false },
-      { name: "Finanzas", path: "/finanzas", pro: false },
-      { name: "Reportes", path: "/reportes", pro: false },
-      { name: "Configuración", path: "/configuracion", pro: false },
+      { name: "Registrar venta", path: "/ventas" },
+      { name: "Historial de ventas", path: "/reportes" },
     ],
+  },
+  {
+    icon: <Package />,
+    name: "Productos",
+    subItems: [
+      { name: "Lista de productos", path: "/productos" },
+      { name: "Inventario", path: "/inventario" },
+    ],
+  },
+  {
+    icon: <DollarSign />,
+    name: "Finanzas",
+    path: "/finanzas",
+  },
+  {
+    icon: <BarChart />,
+    name: "Reportes",
+    path: "/reportes",
+  },
+  {
+    icon: <Settings />,
+    name: "Configuración",
+    path: "/configuracion",
   },
 ];
 
-// 🔮 Espacio para el futuro
+/* ============================================================
+   🧠 OTROS / AVANZADO
+   ============================================================ */
 const othersItems: NavItem[] = [
   {
-    icon: <PieChartIcon />,
+    icon: <Wrench />,
+    name: "Herramientas",
+    subItems: [{ name: "Debug DB", path: "/debug" }],
+  },
+  {
+    icon: <PieChart />,
     name: "Analítica",
     subItems: [
-      { name: "Estadísticas", path: "/estadisticas", pro: false },
-      { name: "Proyecciones", path: "/proyecciones", pro: false },
-    ],
-  },
-    {
-    icon: <PieChartIcon />, // 👈 puedes cambiar el ícono luego si quieres
-    name: "Herramientas",
-    subItems: [
-      { name: "Debug DB", path: "/debug", pro: false },
+      { name: "Estadísticas", path: "/estadisticas" },
+      { name: "Proyecciones", path: "/proyecciones" },
     ],
   },
 ];
@@ -77,9 +87,7 @@ const AppSidebar: React.FC = () => {
     type: "main" | "others";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback(
@@ -105,18 +113,15 @@ const AppSidebar: React.FC = () => {
         }
       });
     });
-
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
+    if (!submenuMatched) setOpenSubmenu(null);
   }, [location, isActive]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
       const key = `${openSubmenu.type}-${openSubmenu.index}`;
       if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
+        setSubMenuHeight((prev) => ({
+          ...prev,
           [key]: subMenuRefs.current[key]?.scrollHeight || 0,
         }));
       }
@@ -124,16 +129,11 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
+    setOpenSubmenu((prev) =>
+      prev && prev.type === menuType && prev.index === index
+        ? null
+        : { type: menuType, index }
+    );
   };
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
@@ -147,14 +147,10 @@ const AppSidebar: React.FC = () => {
                 openSubmenu?.type === menuType && openSubmenu?.index === index
                   ? "menu-item-active"
                   : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
               }`}
             >
               <span
-                className={`menu-item-icon-size  ${
+                className={`menu-item-icon-size ${
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
@@ -171,7 +167,9 @@ const AppSidebar: React.FC = () => {
               <Link
                 to={nav.path}
                 className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+                  isActive(nav.path)
+                    ? "menu-item-active"
+                    : "menu-item-inactive"
                 }`}
               >
                 <span
@@ -197,7 +195,8 @@ const AppSidebar: React.FC = () => {
               className="overflow-hidden transition-all duration-300"
               style={{
                 height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
+                  openSubmenu?.type === menuType &&
+                  openSubmenu?.index === index
                     ? `${subMenuHeight[`${menuType}-${index}`]}px`
                     : "0px",
               }}
@@ -227,80 +226,68 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex flex-col top-0 px-5 left-0 bg-white text-gray-900 h-screen border-r border-gray-200 transition-all duration-300 ease-in-out z-50
         ${
           isExpanded || isMobileOpen
-            ? "w-[290px]"
+            ? "w-[280px]"
             : isHovered
-            ? "w-[290px]"
+            ? "w-[280px]"
             : "w-[90px]"
         }
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0`}
+        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
-      >
-        <Link to="/">
-          <img
-            className="dark:hidden"
-            src="/images/logo/logo.svg"
-            alt="Logo"
-            width={150}
-            height={40}
-          />
-          <img
-            className="hidden dark:block"
-            src="/images/logo/logo-dark.svg"
-            alt="Logo"
-            width={150}
-            height={40}
-          />
-        </Link>
-      </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+  className={`py-6 flex items-center gap-3 ${
+    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+  }`}
+>
+  <Link to="/" className="flex items-center gap-3">
+    <img
+      src="/images/logo/Logo-factura.png"
+      alt="Proyecto Factura"
+      width={50}
+      height={50}
+      className="rounded-md shadow-sm"
+    />
+    {(isExpanded || isHovered || isMobileOpen) && (
+      <span className="text-lg font-bold text-emerald-700 tracking-tight">
+        Facturación
+      </span>
+    )}
+  </Link>
+</div>
+
+      <div className="flex flex-col overflow-y-auto no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
               <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
+                className={`mb-3 text-xs uppercase text-gray-400 flex ${
+                  !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
+                {isExpanded || isHovered || isMobileOpen ? "Menú principal" : <MoreHorizontal />}
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
             <div>
               <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
+                className={`mb-3 text-xs uppercase text-gray-400 flex ${
+                  !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Avanzado"
-                ) : (
-                  <HorizontaLDots />
-                )}
+                {isExpanded || isHovered || isMobileOpen ? "Avanzado" : <MoreHorizontal />}
               </h2>
               {renderMenuItems(othersItems, "others")}
             </div>
           </div>
         </nav>
-       {/* tarjeta
-       {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}*/}
+
+        <footer className="mt-auto mb-6 text-center text-xs text-gray-400">
+          © {new Date().getFullYear()} <b className="text-emerald-700">InformaticsPro</b>
+        </footer>
       </div>
     </aside>
   );

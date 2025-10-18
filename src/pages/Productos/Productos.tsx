@@ -6,6 +6,7 @@ import {
   eliminarProducto,
   initSQLite,
 } from "../../services/db";
+import { obtenerCategorias, insertarCategoria } from "../../services/db";
 
 interface Producto {
   id?: number;
@@ -14,8 +15,8 @@ interface Producto {
   precio_venta: number | string;
   unidad_medida: string;
   stock: number | string;
+  categoria?: string | null;
 }
-
 export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [filtrados, setFiltrados] = useState<Producto[]>([]);
@@ -32,19 +33,31 @@ export default function Productos() {
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
 const [mostrarMenu, setMostrarMenu] = useState(false);
+const [categorias, setCategorias] = useState<string[]>([]);
+const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
+
+// 🔹 Filtrar productos según la categoría seleccionada
+const productosFiltrados = categoriaSeleccionada
+  ? productos.filter((p) => p.categoria === categoriaSeleccionada)
+  : productos;
+
   // 🔹 Inicializar BD y cargar productos
+
   useEffect(() => {
-    (async () => {
-      await initSQLite();
-      await cargarProductos();
-    })();
-  }, []);
+  (async () => {
+    await initSQLite();
+    await cargarProductos();
+    const cats = await obtenerCategorias();
+    setCategorias(cats.map(c => c.nombre));
+  })();
+}, []);
 
   async function cargarProductos() {
     const data = await obtenerProductos();
     setProductos(data || []);
     setFiltrados(data || []);
   }
+  
 
   // 🔍 Filtrar productos por nombre
   useEffect(() => {
@@ -82,25 +95,30 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
       return;
     }
 
-    if (editandoId) {
-      await actualizarProducto(editandoId, {
-        nombre: formData.nombre,
-        precio_costo,
-        precio_venta,
-        unidad_medida: formData.unidad_medida,
-        stock,
-      });
-      setMensaje("✅ Producto actualizado con éxito");
-    } else {
-      await insertarProducto({
-        nombre: formData.nombre,
-        precio_costo,
-        precio_venta,
-        unidad_medida: formData.unidad_medida,
-        stock,
-      });
-      setMensaje("✅ Producto agregado con éxito");
-    }
+   if (editandoId) {
+  await actualizarProducto(editandoId, {
+    nombre: formData.nombre,
+    precio_costo,
+    precio_venta,
+    unidad_medida: formData.unidad_medida,
+    stock,
+    categoria: formData.categoria || null,
+  });
+  setMensaje("✅ Producto actualizado con éxito");
+} else {
+  // Asegurar que la categoría exista en la tabla categorias
+  if (formData.categoria) await insertarCategoria(formData.categoria);
+
+  await insertarProducto({
+    nombre: formData.nombre,
+    precio_costo,
+    precio_venta,
+    unidad_medida: formData.unidad_medida,
+    stock,
+    categoria: formData.categoria || null,
+  });
+  setMensaje("✅ Producto agregado con éxito");
+}
 
     setFormData({
       nombre: "",
@@ -151,6 +169,7 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
           className="border p-2 rounded w-full md:w-1/3 shadow-sm"
         />
       </div>
+      
 
       {/* Formulario */}
       <form
@@ -161,60 +180,92 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
           {editandoId ? "Editar Producto" : "Agregar Producto"}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <input
-            type="text"
-            name="nombre"
-            placeholder="Nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+  <input
+    type="text"
+    name="nombre"
+    placeholder="Nombre"
+    value={formData.nombre}
+    onChange={handleChange}
+    className="border p-2 rounded"
+  />
 
-          <div className="relative">
-            <span className="absolute left-2 top-2 text-gray-500">$</span>
-            <input
-              type="number"
-              name="precio_costo"
-              placeholder="Costo"
-              value={formData.precio_costo}
-              onChange={handleChange}
-              className="border p-2 rounded pl-6 w-full"
-            />
-          </div>
+ <div className="flex gap-2 items-center">
+  <select
+    name="categoria"
+    value={formData.categoria || ""}
+    onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+    className="border p-2 rounded flex-1"
+  >
+    <option value="">Sin categoría</option>
+    {categorias.map((cat) => (
+      <option key={cat} value={cat}>
+        {cat}
+      </option>
+    ))}
+  </select>
 
-          <div className="relative">
-            <span className="absolute left-2 top-2 text-gray-500">$</span>
-            <input
-              type="number"
-              name="precio_venta"
-              placeholder="Venta"
-              value={formData.precio_venta}
-              onChange={handleChange}
-              className="border p-2 rounded pl-6 w-full"
-            />
-          </div>
+  <button
+    type="button"
+    onClick={async () => {
+      const nueva = prompt("🆕 Escribe el nombre de la nueva categoría:");
+      if (nueva) {
+        await insertarCategoria(nueva);
+        const cats = await obtenerCategorias();
+        setCategorias(cats.map((c) => c.nombre));
+        setFormData({ ...formData, categoria: nueva });
+      }
+    }}
+    className="bg-emerald-500 text-white px-3 py-2 rounded hover:bg-emerald-600"
+  >
+    +
+  </button>
+</div>
 
-          <select
-            name="unidad_medida"
-            value={formData.unidad_medida}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          >
-            <option value="unidad">Unidad</option>
-            <option value="kilo">Kilo</option>
-            <option value="libra">Libra</option>
-          </select>
+  <div className="relative">
+    <span className="absolute left-2 top-2 text-gray-500">$</span>
+    <input
+      type="number"
+      name="precio_costo"
+      placeholder="Costo"
+      value={formData.precio_costo}
+      onChange={handleChange}
+      className="border p-2 rounded pl-6 w-full"
+    />
+  </div>
 
-          <input
-            type="number"
-            name="stock"
-            placeholder="Stock"
-            value={formData.stock}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          />
-        </div>
+  <div className="relative">
+    <span className="absolute left-2 top-2 text-gray-500">$</span>
+    <input
+      type="number"
+      name="precio_venta"
+      placeholder="Venta"
+      value={formData.precio_venta}
+      onChange={handleChange}
+      className="border p-2 rounded pl-6 w-full"
+    />
+  </div>
+
+  <select
+    name="unidad_medida"
+    value={formData.unidad_medida}
+    onChange={handleChange}
+    className="border p-2 rounded"
+  >
+    <option value="unidad">Unidad</option>
+    <option value="kilo">Kilo</option>
+    <option value="libra">Libra</option>
+  </select>
+
+  <input
+    type="number"
+    name="stock"
+    placeholder="Stock"
+    value={formData.stock}
+    onChange={handleChange}
+    className="border p-2 rounded"
+  />
+</div>
 
         <div className="mt-4 flex gap-2">
           <button
@@ -244,6 +295,34 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
         </div>
       </form>
 
+      {/* 🔹 Filtro por categorías */}
+<div className="flex flex-wrap gap-2 mb-4">
+  <button
+    onClick={() => setCategoriaSeleccionada(null)}
+    className={`px-4 py-2 rounded-full border text-sm font-medium ${
+      categoriaSeleccionada === null
+        ? "bg-emerald-600 text-white"
+        : "bg-white hover:bg-emerald-50"
+    }`}
+  >
+    Todas
+  </button>
+
+  {categorias.map((cat) => (
+    <button
+      key={cat}
+      onClick={() => setCategoriaSeleccionada(cat)}
+      className={`px-4 py-2 rounded-full border text-sm font-medium ${
+        categoriaSeleccionada === cat
+          ? "bg-emerald-600 text-white"
+          : "bg-white hover:bg-emerald-50"
+      }`}
+    >
+      {cat}
+    </button>
+  ))}
+</div>
+
      {/* Tabla */}
 <div className="overflow-x-auto overflow-y-auto max-h-[50vh] w-full scroll-suave rounded-lg">
   <table className="min-w-full bg-white border border-gray-200 shadow-md rounded">
@@ -252,13 +331,14 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
         <th className="py-2 px-4 border-b">Nombre</th>
         <th className="py-2 px-4 border-b text-center">Costo</th>
         <th className="py-2 px-4 border-b text-center">Venta</th>
+        <th className="py-2 px-4 border-b text-center">Categoría</th>
         <th className="py-2 px-4 border-b text-center">Unidad</th>
         <th className="py-2 px-4 border-b text-center">Stock</th>
         <th className="py-2 px-4 border-b text-center">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {filtrados.map((p) => (
+      {productosFiltrados.map((p) => (
         <tr
   key={p.id}
   className="hover:bg-indigo-50 cursor-pointer transition-all"
@@ -278,6 +358,7 @@ const [mostrarMenu, setMostrarMenu] = useState(false);
           <td className="py-2 px-4 border-b text-center text-green-700">
             ${Number(p.precio_venta || 0).toFixed(2)}
           </td>
+          <td className="py-2 px-4 border-b text-center">{(p as any).categoria || "-"}</td>
           <td className="py-2 px-4 border-b text-center">{p.unidad_medida}</td>
           <td className="py-2 px-4 border-b text-center">{p.stock}</td>
           <td className="py-2 px-4 border-b text-center space-x-2">
