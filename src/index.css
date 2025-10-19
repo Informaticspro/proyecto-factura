@@ -821,3 +821,26 @@ keyframes fadeIn {
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
+/* === Animación de fondo gris del menú === */
+.sidebar-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out;
+}
+
+.sidebar-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebar-overlay.hide {
+  opacity: 0;
+  visibility: hidden;
+}
+/* ==== Margen seguro superior (para notch / barra de estado) ==== */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+.header-safe {
+  padding-top: calc(var(--safe-top) + 8px); /* agrega un margen adaptable */
+}

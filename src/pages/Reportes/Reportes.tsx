@@ -9,7 +9,7 @@ export default function Reportes() {
   const [desde, setDesde] = useState<string>("");
   const [hasta, setHasta] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [pestaña, setPestaña] = useState<"ventas" | "inventario">("ventas");
 
   // ================================

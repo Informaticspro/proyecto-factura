@@ -32,7 +32,7 @@ export default function EstadisticasAnuales() {
           ORDER BY mes;
         `;
         const res = await ejecutarConsulta(sql, [String(añoActual)]);
-        const filas = Array.isArray(res) ? res : res?.values ?? [];
+        const filas = Array.isArray(res) ? res : (res && (res as any).values) ?? [];
         lista = filas.map((r: any) => ({
           mes: nombreMes(Number(r.mes)),
           total: Number(r.total),

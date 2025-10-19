@@ -1,19 +1,22 @@
-// src/layout/AppSidebar.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
+import { useCloseSidebar } from "../hooks/useCloseSidebar";
 import {
   Home,
   ShoppingCart,
   Package,
   BarChart,
   DollarSign,
-  FileText,
   Settings,
   Wrench,
   PieChart,
   MoreHorizontal,
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
+
+type AppSidebarProps = {
+  headerHeight: number; // ✅ ahora recibe el alto del header
+};
 
 type NavItem = {
   name: string;
@@ -43,21 +46,9 @@ const navItems: NavItem[] = [
       { name: "Inventario", path: "/inventario" },
     ],
   },
-  {
-    icon: <DollarSign />,
-    name: "Finanzas",
-    path: "/finanzas",
-  },
-  {
-    icon: <BarChart />,
-    name: "Reportes",
-    path: "/reportes",
-  },
-  {
-    icon: <Settings />,
-    name: "Configuración",
-    path: "/configuracion",
-  },
+  { icon: <DollarSign />, name: "Finanzas", path: "/finanzas" },
+  { icon: <BarChart />, name: "Reportes", path: "/reportes" },
+  { icon: <Settings />, name: "Configuración", path: "/configuracion" },
 ];
 
 /* ============================================================
@@ -79,16 +70,26 @@ const othersItems: NavItem[] = [
   },
 ];
 
-const AppSidebar: React.FC = () => {
+const AppSidebar: React.FC<AppSidebarProps> = ({ headerHeight }) => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { closeSidebar } = useCloseSidebar();
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
   } | null>(null);
+
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [hasShadow, setHasShadow] = useState(false); // ✅ sombra dinámica
+
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
+
+  // 🧠 Cerrar menú automáticamente al cambiar de ruta
+  useEffect(() => {
+    closeSidebar();
+  }, [location.pathname]);
 
   const isActive = useCallback(
     (path: string) => location.pathname === path,
@@ -103,10 +104,7 @@ const AppSidebar: React.FC = () => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
             if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
+              setOpenSubmenu({ type: menuType as "main" | "others", index });
               submenuMatched = true;
             }
           });
@@ -135,6 +133,34 @@ const AppSidebar: React.FC = () => {
         : { type: menuType, index }
     );
   };
+
+  // ✅ Detectar clic fuera del sidebar (solo en móvil)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        isMobileOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(e.target as Node)
+      ) {
+        closeSidebar();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMobileOpen, closeSidebar]);
+
+  // ✅ Detectar scroll interno para mostrar sombra
+  useEffect(() => {
+    const el = sidebarRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      setHasShadow(el.scrollTop > 10);
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-4">
@@ -166,6 +192,7 @@ const AppSidebar: React.FC = () => {
             nav.path && (
               <Link
                 to={nav.path}
+                onClick={closeSidebar}
                 className={`menu-item group ${
                   isActive(nav.path)
                     ? "menu-item-active"
@@ -206,6 +233,7 @@ const AppSidebar: React.FC = () => {
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
+                      onClick={closeSidebar}
                       className={`menu-dropdown-item ${
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
@@ -226,38 +254,45 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col top-0 px-5 left-0 bg-white text-gray-900 h-screen border-r border-gray-200 transition-all duration-300 ease-in-out z-50
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[280px]"
-            : isHovered
-            ? "w-[280px]"
-            : "w-[90px]"
-        }
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+      ref={sidebarRef}
+      className={`fixed left-0 flex flex-col px-5 bg-white text-gray-900 border-r border-gray-200 transition-all duration-300 ease-in-out
+      ${
+        isExpanded || isMobileOpen
+          ? "w-[280px]"
+          : isHovered
+          ? "w-[280px]"
+          : "w-[90px]"
+      }
+      ${isMobileOpen ? "translate-x-0 z-[70]" : "-translate-x-full z-[50]"} lg:translate-x-0 ${
+        hasShadow ? "shadow-md" : ""
+      }`}
+      style={{
+        top: `${headerHeight}px`,
+        height: `calc(100dvh - ${headerHeight}px)`,
+      }}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-  className={`py-6 flex items-center gap-3 ${
-    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-  }`}
->
-  <Link to="/" className="flex items-center gap-3">
-    <img
-      src="/images/logo/Logo-factura.png"
-      alt="Proyecto Factura"
-      width={50}
-      height={50}
-      className="rounded-md shadow-sm"
-    />
-    {(isExpanded || isHovered || isMobileOpen) && (
-      <span className="text-lg font-bold text-emerald-700 tracking-tight">
-        Facturación
-      </span>
-    )}
-  </Link>
-</div>
+        className={`py-6 flex items-center gap-3 ${
+          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+        }`}
+      >
+        <Link to="/" className="flex items-center gap-3">
+          <img
+            src="/images/logo/Logo-factura.png"
+            alt="Proyecto Factura"
+            width={50}
+            height={50}
+            className="rounded-md shadow-sm"
+          />
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <span className="text-lg font-bold text-emerald-700 tracking-tight">
+              Facturación
+            </span>
+          )}
+        </Link>
+      </div>
 
       <div className="flex flex-col overflow-y-auto no-scrollbar">
         <nav className="mb-6">
@@ -265,20 +300,32 @@ const AppSidebar: React.FC = () => {
             <div>
               <h2
                 className={`mb-3 text-xs uppercase text-gray-400 flex ${
-                  !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                  !isExpanded && !isHovered
+                    ? "lg:justify-center"
+                    : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? "Menú principal" : <MoreHorizontal />}
+                {isExpanded || isHovered || isMobileOpen ? (
+                  "Menú principal"
+                ) : (
+                  <MoreHorizontal />
+                )}
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
             <div>
               <h2
                 className={`mb-3 text-xs uppercase text-gray-400 flex ${
-                  !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                  !isExpanded && !isHovered
+                    ? "lg:justify-center"
+                    : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? "Avanzado" : <MoreHorizontal />}
+                {isExpanded || isHovered || isMobileOpen ? (
+                  "Avanzado"
+                ) : (
+                  <MoreHorizontal />
+                )}
               </h2>
               {renderMenuItems(othersItems, "others")}
             </div>
@@ -286,7 +333,8 @@ const AppSidebar: React.FC = () => {
         </nav>
 
         <footer className="mt-auto mb-6 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} <b className="text-emerald-700">InformaticsPro</b>
+          © {new Date().getFullYear()}{" "}
+          <b className="text-emerald-700">InformaticsPro</b>
         </footer>
       </div>
     </aside>

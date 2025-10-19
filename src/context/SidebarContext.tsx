@@ -11,6 +11,7 @@ type SidebarContextType = {
   setIsHovered: (isHovered: boolean) => void;
   setActiveItem: (item: string | null) => void;
   toggleSubmenu: (item: string) => void;
+  closeMobileSidebar: () => void; // ✅ AGREGA ESTA LÍNEA
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -54,15 +55,18 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsExpanded((prev) => !prev);
   };
 
-  const toggleMobileSidebar = () => {
-    setIsMobileOpen((prev) => !prev);
-  };
+const toggleMobileSidebar = () => {
+  setIsMobileOpen((prev) => !prev);
+};
 
+const closeMobileSidebar = () => {
+  setIsMobileOpen(false);
+};
   const toggleSubmenu = (item: string) => {
     setOpenSubmenu((prev) => (prev === item ? null : item));
   };
 
-  return (
+ return (
     <SidebarContext.Provider
       value={{
         isExpanded: isMobile ? false : isExpanded,
@@ -75,6 +79,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsHovered,
         setActiveItem,
         toggleSubmenu,
+        closeMobileSidebar, // ✅ correcto aquí (solo el nombre)
       }}
     >
       {children}

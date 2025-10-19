@@ -10,9 +10,8 @@ export const DB_NAME = "facturacionDB";
 export let db: SQLiteDBConnection | null = null;
 export const isNative = Capacitor.isNativePlatform();
 
-
 /* =======================================================
-   🌐 Dexie (fallback web)
+   🌐 Dexie (modo navegador)
    ======================================================= */
 export const dexieDB = new Dexie(DB_NAME);
 dexieDB.version(4).stores({
@@ -35,32 +34,42 @@ export async function initSQLite() {
 
   try {
     const sqlite = new SQLiteConnection(CapacitorSQLite);
-    const existingConn = await sqlite.isConnection(DB_NAME, false);
-    db = existingConn.result
-      ? await sqlite.retrieveConnection(DB_NAME, false)
-      : await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
+    console.log("🔍 Plataforma detectada:", Capacitor.getPlatform());
 
+    // Verifica si hay conexión existente y activa
+    const existingConn = await sqlite.isConnection(DB_NAME, false);
+    if (existingConn.result) {
+      const consistency = await sqlite.checkConnectionsConsistency();
+      if (consistency.result) {
+        console.log("🔁 Reutilizando conexión activa con", DB_NAME);
+        db = await sqlite.retrieveConnection(DB_NAME, false);
+        return db;
+      }
+    }
+
+    // Si no existe o no está activa, crea una nueva
+    console.log("🆕 Creando nueva conexión SQLite con", DB_NAME);
+    db = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
     await db.open();
 
-    // Crear tablas principales si no existen
-await db.execute(`
-  CREATE TABLE IF NOT EXISTS productos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT NOT NULL,
-    categoria TEXT,                
-    precio_costo REAL NOT NULL,
-    precio_venta REAL NOT NULL,
-    unidad_medida TEXT,
-    stock INTEGER DEFAULT 0
-  );
-`);
-await db.execute(`
-  CREATE TABLE IF NOT EXISTS categorias (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT UNIQUE NOT NULL
-  );
-`);
-
+    // Crear tablas
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS productos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        categoria TEXT,
+        precio_costo REAL NOT NULL,
+        precio_venta REAL NOT NULL,
+        unidad_medida TEXT,
+        stock INTEGER DEFAULT 0
+      );
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS categorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT UNIQUE NOT NULL
+      );
+    `);
     await db.execute(`
       CREATE TABLE IF NOT EXISTS ventas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,7 +77,6 @@ await db.execute(`
         total REAL NOT NULL CHECK (total >= 0)
       );
     `);
-
     await db.execute(`
       CREATE TABLE IF NOT EXISTS detalle_ventas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +89,6 @@ await db.execute(`
         FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE RESTRICT
       );
     `);
-
     await db.execute(`
       CREATE TABLE IF NOT EXISTS movimientos_inventario (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,13 +124,19 @@ export async function ejecutarConsulta(sql: string, params: any[] = []) {
   }
 }
 
+/* =======================================================
+   🔒 Cerrar conexión
+   ======================================================= */
 export async function cerrarConexion() {
   if (isNative && db) {
     await db.close();
     console.log("🔒 Conexión SQLite cerrada");
   }
 }
-// 📦 Categorías
+
+/* =======================================================
+   📦 Categorías
+   ======================================================= */
 export async function obtenerCategorias() {
   if (isNative) {
     if (!db) return [];
