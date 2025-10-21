@@ -36,23 +36,22 @@ export async function initSQLite() {
     const sqlite = new SQLiteConnection(CapacitorSQLite);
     console.log("🔍 Plataforma detectada:", Capacitor.getPlatform());
 
-    // Verifica si hay conexión existente y activa
-    const existingConn = await sqlite.isConnection(DB_NAME, false);
-    if (existingConn.result) {
-      const consistency = await sqlite.checkConnectionsConsistency();
-      if (consistency.result) {
-        console.log("🔁 Reutilizando conexión activa con", DB_NAME);
-        db = await sqlite.retrieveConnection(DB_NAME, false);
-        return db;
-      }
+    // 🔸 Verificar si ya existe una conexión activa y consistente
+    const consistency = await sqlite.checkConnectionsConsistency();
+    const isConn = (await sqlite.isConnection(DB_NAME, false)).result;
+
+    if (consistency.result && isConn) {
+      console.log("🔁 Reutilizando conexión existente con", DB_NAME);
+      db = await sqlite.retrieveConnection(DB_NAME, false);
+      return db;
     }
 
-    // Si no existe o no está activa, crea una nueva
+    // 🔹 Si no existe, crear una nueva conexión
     console.log("🆕 Creando nueva conexión SQLite con", DB_NAME);
     db = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
     await db.open();
 
-    // Crear tablas
+    // Crear tablas si no existen
     await db.execute(`
       CREATE TABLE IF NOT EXISTS productos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,12 +63,14 @@ export async function initSQLite() {
         stock INTEGER DEFAULT 0
       );
     `);
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS categorias (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT UNIQUE NOT NULL
       );
     `);
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS ventas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +78,7 @@ export async function initSQLite() {
         total REAL NOT NULL CHECK (total >= 0)
       );
     `);
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS detalle_ventas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +91,7 @@ export async function initSQLite() {
         FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE RESTRICT
       );
     `);
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS movimientos_inventario (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,5 +157,29 @@ export async function insertarCategoria(nombre: string) {
     await db.run(`INSERT OR IGNORE INTO categorias (nombre) VALUES (?)`, [nombre]);
   } else {
     await dexieDB.table("categorias").put({ nombre });
+  }
+}
+/* =======================================================
+   💾 Función segura para ejecutar transacciones SQLite
+   ======================================================= */
+export async function ejecutarTransaccion(acciones: (db: SQLiteDBConnection) => Promise<void>) {
+  if (!isNative || !db) {
+    console.warn("⚠️ Transacción omitida (modo navegador o DB no inicializada)");
+    return;
+  }
+
+  try {
+    console.log("🔹 Iniciando transacción");
+    await db.execute("BEGIN TRANSACTION;");
+
+    // Ejecuta las acciones que recibe como parámetro
+    await acciones(db);
+
+    await db.execute("COMMIT;");
+    console.log("✅ Transacción confirmada");
+  } catch (error) {
+    console.error("❌ Error en transacción:", error);
+    await db.execute("ROLLBACK;");
+    throw error;
   }
 }

@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   initVentasSchema,
   obtenerProductos,
-  registrarVenta,
+  //registrarVenta,
   obtenerVentasResumen,
   obtenerDetalleDeVenta,
   obtenerCategorias,
+ // ejecutarTransaccion,
   type Producto,
 } from '../../services/db';
+import { db } from "../../services/db"; // ✅ <-- Agregar esta línea
 
 // Formateo simple de moneda
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
@@ -111,29 +113,57 @@ useEffect(() => {
     setCarrito((prev) => prev.filter((x) => x.key !== key));
   }
 
-  async function onRegistrarVenta() {
-    try {
-      setError(null);
-      if (!carrito.length) return;
-      const items = carrito.map((c) => ({
-        producto_id: c.producto_id,
-        cantidad: c.cantidad,
-        precio_unitario: c.precio_unitario,
-      }));
-      const fechaISO = new Date(`${fecha}T00:00:00`).toISOString();
-      const ventaId = await registrarVenta(items, fechaISO);
+async function onRegistrarVenta() {
+  try {
+    setError(null);
+    if (!carrito.length) return;
 
-      // Refrescar UI
-      const prods = await obtenerProductos();
-      setProductos(prods);
-      const vs = await obtenerVentasResumen(20);
-      setVentas(vs);
-      setCarrito([]);
-      alert(`✅ Venta #${ventaId} registrada correctamente`);
-    } catch (e: any) {
-      setError(e?.message ?? 'Error al registrar la venta');
+    const items = carrito.map((c) => ({
+      producto_id: c.producto_id,
+      cantidad: c.cantidad,
+      precio_unitario: c.precio_unitario,
+    }));
+    const fechaISO = new Date(`${fecha}T00:00:00`).toISOString();
+    const total = carrito.reduce((acc, it) => acc + it.cantidad * it.precio_unitario, 0);
+
+    if (!db) throw new Error("No hay conexión con la base de datos");
+
+    let sql = `
+      BEGIN TRANSACTION;
+      INSERT INTO ventas (fecha, total) VALUES ('${fechaISO}', ${total});
+    `;
+
+    // id autoincrementado de la última venta
+    const nextVentaIdQuery = "SELECT IFNULL(MAX(id), 0) + 1 AS nextId FROM ventas;";
+    const nextVenta = await db.query(nextVentaIdQuery);
+    const ventaId = nextVenta.values?.[0]?.nextId || 1;
+
+    // agrega los detalles
+    for (const item of items) {
+      const subtotal = item.cantidad * item.precio_unitario;
+      sql += `
+        INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal)
+        VALUES (${ventaId}, ${item.producto_id}, ${item.cantidad}, ${item.precio_unitario}, ${subtotal});
+      `;
     }
+
+    sql += "COMMIT;";
+
+    await db.execute(sql);
+    alert(`✅ Venta #${ventaId} registrada correctamente`);
+
+    // refrescar interfaz
+    const prods = await obtenerProductos();
+    setProductos(prods);
+    const vs = await obtenerVentasResumen(20);
+    setVentas(vs);
+    setCarrito([]);
+  } catch (e: any) {
+    console.error("❌ Error al registrar la venta:", e);
+    await db?.execute("ROLLBACK;");
+    setError(e?.message ?? "Error al registrar la venta");
   }
+}
 
   async function toggleDetalles(ventaId: number) {
     if (ventaExpandida === ventaId) {

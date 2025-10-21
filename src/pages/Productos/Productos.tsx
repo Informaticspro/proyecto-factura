@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 import Dexie from "dexie";
 import PageMeta from "../../components/common/PageMeta";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
+import { Filesystem } from "@capacitor/filesystem"; 
 
 /* =======================================================
    🧩 Base Dexie (modo navegador)
@@ -39,7 +40,7 @@ export default function Productos() {
   ======================================================= */
   const [productos, setProductos] = useState<Producto[]>([]);
   const [filtrados, setFiltrados] = useState<Producto[]>([]);
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, ] = useState("");
   const [formData, setFormData] = useState<Producto>({
     nombre: "",
     precio_costo: "",
@@ -48,7 +49,7 @@ export default function Productos() {
     stock: "",
   });
   const [editandoId, setEditandoId] = useState<number | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [, setMensaje] = useState<string | null>(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [categorias, setCategorias] = useState<string[]>([]);
@@ -58,76 +59,144 @@ export default function Productos() {
      📂 Importar productos desde Excel
   ======================================================= */
   const handleImportExcel = async () => {
-    try {
-      let file: File | null = null;
+  try {
+    let rows: any[] = [];
 
-      if (isNative) {
-        // 📱 Android: selector nativo
-        const result = await FilePicker.pickFiles({
-  types: [
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-excel",
-    "text/csv",
-  ],
-});
+    if (isNative) {
+      // 📱 Android: selector nativo
+      const result = await FilePicker.pickFiles({
+        types: [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
+          "text/csv",
+        ],
+      });
 
-        if (result.files.length === 0) {
-          alert("No seleccionaste ningún archivo.");
-          return;
-        }
-
-        const selected = result.files[0];
-        const response = await fetch(selected.path!);
-        const blob = await response.blob();
-        file = new File([blob], selected.name);
-      } else {
-        // 💻 Navegador
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".xlsx, .xls, .csv";
-        input.click();
-        await new Promise((resolve) => (input.onchange = resolve));
-        file = input.files?.[0] || null;
+      if (result.files.length === 0) {
+        alert("No seleccionaste ningún archivo.");
+        return;
       }
 
+      const selected = result.files[0];
+      console.log("📂 Archivo seleccionado:", selected);
+
+      // ✅ Leer desde FileSystem (no fetch)
+      const contenido = await Filesystem.readFile({ path: selected.path as string });
+
+      const byteArray = Uint8Array.from(atob(contenido.data as string), (c) =>
+        c.charCodeAt(0)
+      );
+
+      // 📊 Procesar Excel
+      const workbook = XLSX.read(byteArray, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(firstSheet);
+      console.log("📦 Productos importados (Android):", rows);
+    } else {
+      // 💻 Navegador
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".xlsx, .xls, .csv";
+      input.click();
+      await new Promise((resolve) => (input.onchange = resolve));
+      const file = input.files?.[0];
       if (!file) return;
 
-      // 📊 Leer el Excel
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
-      console.log("📦 Productos importados:", rows);
-
-      // 💾 Guardar en SQLite o Dexie
-      const db = await initSQLite();
-      if (db) {
-        for (const item of rows as any[]) {
-          await db.run(
-            `INSERT OR REPLACE INTO productos 
-            (nombre, categoria, precio_costo, precio_venta, unidad_medida, stock)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-              item.nombre,
-              item.categoria,
-              item.precio_costo,
-              item.precio_venta,
-              item.unidad_medida,
-              item.stock,
-            ]
-          );
-        }
-      } else {
-        await dexieDB.table("productos").bulkPut(rows as any[]);
-      }
-
-      await cargarProductos();
-      toast.success("✅ Productos importados correctamente con categorías.");
-    } catch (error) {
-      console.error("❌ Error al importar Excel:", error);
-      toast.error("Error al procesar el archivo. Verifica el formato.");
+      rows = XLSX.utils.sheet_to_json(firstSheet);
+      console.log("📦 Productos importados (Web):", rows);
     }
-  };
+
+  // 💾 Guardar en SQLite o Dexie
+if (rows.length > 0) {
+  const db = await initSQLite();
+
+  // 🧠 Crear un Set para guardar las categorías únicas
+  const categoriasSet = new Set<string>();
+
+  for (const item of rows as any[]) {
+    if (item.categoria) categoriasSet.add(item.categoria.trim());
+
+    if (db) {
+      await db.run(
+        `INSERT OR REPLACE INTO productos 
+        (nombre, categoria, precio_costo, precio_venta, unidad_medida, stock)
+        VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          item.nombre,
+          item.categoria,
+          item.precio_costo,
+          item.precio_venta,
+          item.unidad_medida,
+          item.stock,
+        ]
+      );
+    } else {
+      await dexieDB.table("productos").put(item);
+    }
+  }
+
+  // 🗂️ Insertar categorías sin duplicar
+  if (db) {
+    for (const nombre of categoriasSet) {
+      await db.run(`INSERT OR IGNORE INTO categorias (nombre) VALUES (?)`, [nombre]);
+    }
+  } else {
+    for (const nombre of categoriasSet) {
+      await dexieDB.table("categorias").put({ nombre });
+    }
+  }
+
+  // 🔄 Recargar productos y categorías
+  await cargarProductos();
+  const cats = await obtenerCategorias();
+  setCategorias(cats.map((c) => c.nombre));
+
+  toast.success(
+    `✅ ${rows.length} productos importados correctamente (${categoriasSet.size} categorías).`
+  );
+} else {
+  toast.error("⚠️ No se encontraron filas en el archivo Excel.");
+}
+} catch (error) {
+  console.error("❌ Error al importar Excel:", error);
+  toast.error("Error al procesar el archivo. Verifica el formato.");
+}
+};
+
+{/* 🔹 Filtro por categorías */}
+<div className="flex flex-wrap gap-2 mb-4">
+  <button
+    onClick={() => setCategoriaSeleccionada(null)}
+    className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
+      categoriaSeleccionada === null
+        ? "bg-emerald-600 text-white"
+        : "bg-white hover:bg-emerald-50"
+    }`}
+  >
+    Todas
+  </button>
+
+  {categorias.length === 0 ? (
+    <span className="text-gray-500 text-sm italic">Sin categorías registradas</span>
+  ) : (
+    categorias.map((cat) => (
+      <button
+        key={cat}
+        onClick={() => setCategoriaSeleccionada(cat)}
+        className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
+          categoriaSeleccionada === cat
+            ? "bg-emerald-600 text-white"
+            : "bg-white hover:bg-emerald-50"
+        }`}
+      >
+        {cat}
+      </button>
+    ))
+  )}
+</div>
 
   /* =======================================================
      🗂️ Cargar productos y categorías
