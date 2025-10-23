@@ -1,8 +1,8 @@
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import VentasDiarias from "../../components/ecommerce/VentasDiarias";
 
-import MonthlyTarget from "../../components/ecommerce/MonthlyTarget";
-import RecentOrders from "../../components/ecommerce/RecentOrders";
+//import MonthlyTarget from "../../components/ecommerce/MonthlyTarget";
+//import RecentOrders from "../../components/ecommerce/RecentOrders";
 import VentasYStock from "../../components/ecommerce/VentasYStock";
 import PageMeta from "../../components/common/PageMeta";
 import EstadisticasAnuales from "../../components/ecommerce/EstadisticasAnuales";
@@ -28,14 +28,14 @@ export default function Home() {
         <div className="col-span-12">
           <EstadisticasAnuales />
         </div>
-
+{/* 🧾 Modal de confirmación 
         <div className="col-span-12 xl:col-span-5">
           <MonthlyTarget />
         </div>
 
         <div className="col-span-12 xl:col-span-7">
           <RecentOrders />
-        </div>
+        </div>*/}
       </div>
     </>
   );
