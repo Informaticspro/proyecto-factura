@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   insertarProducto,
   obtenerProductos,
@@ -54,6 +54,7 @@ export default function Productos() {
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   /* =======================================================
      📂 Importar productos desde Excel
@@ -272,9 +273,21 @@ if (rows.length > 0) {
      ✏️ Editar y eliminar
   ======================================================= */
   const handleEditar = (p: Producto) => {
-    setFormData(p);
-    setEditandoId(p.id || null);
-  };
+  setFormData(p);
+  setEditandoId(p.id || null);
+
+  // ✨ Desplaza suavemente hacia el formulario
+  setTimeout(() => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // 💡 Efecto visual temporal en el formulario
+    const el = formRef.current;
+    if (el) {
+      el.classList.add("ring-4", "ring-emerald-400");
+      setTimeout(() => el.classList.remove("ring-4", "ring-emerald-400"), 1200);
+    }
+  }, 100);
+};
 
   const handleEliminar = async (id: number) => {
     if (confirm("¿Seguro que quieres eliminar este producto?")) {
@@ -323,15 +336,17 @@ if (rows.length > 0) {
         </div>
 
         {/* 🧾 Formulario */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white shadow-md rounded p-4 mb-6"
-        >
+       <form
+  ref={formRef}
+  onSubmit={handleSubmit}
+  className="bg-white shadow-md rounded p-4 mb-6 transition duration-300"
+>
           <h2 className="text-lg font-semibold mb-4">
             {editandoId ? "Editar Producto" : "Agregar Producto"}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            
             <input
               type="text"
               name="nombre"
@@ -375,29 +390,41 @@ if (rows.length > 0) {
               </button>
             </div>
 
-            <div className="relative">
-              <span className="absolute left-2 top-2 text-gray-500">$</span>
-              <input
-                type="number"
-                name="precio_costo"
-                placeholder="Costo"
-                value={formData.precio_costo}
-                onChange={handleChange}
-                className="border p-2 rounded pl-6 w-full"
-              />
-            </div>
+            {/* 💰 Costo del producto */}
+<div className="relative">
+  <label className="block text-sm font-semibold text-gray-700 mb-1">
+    💵 Costo del producto
+  </label>
+  <div className="relative">
+    <span className="absolute left-3 top-2 text-gray-500">$</span>
+    <input
+      type="number"
+      name="precio_costo"
+      placeholder="Ej: 0.35"
+      value={formData.precio_costo}
+      onChange={handleChange}
+      className="border p-2 rounded pl-7 w-full focus:ring-2 focus:ring-emerald-400 outline-none"
+    />
+  </div>
+</div>
 
-            <div className="relative">
-              <span className="absolute left-2 top-2 text-gray-500">$</span>
-              <input
-                type="number"
-                name="precio_venta"
-                placeholder="Venta"
-                value={formData.precio_venta}
-                onChange={handleChange}
-                className="border p-2 rounded pl-6 w-full"
-              />
-            </div>
+{/* 🏷️ Precio de venta */}
+<div className="relative">
+  <label className="block text-sm font-semibold text-gray-700 mb-1">
+    🏷️ Precio de venta
+  </label>
+  <div className="relative">
+    <span className="absolute left-3 top-2 text-gray-500">$</span>
+    <input
+      type="number"
+      name="precio_venta"
+      placeholder="Ej: 0.50"
+      value={formData.precio_venta}
+      onChange={handleChange}
+      className="border p-2 rounded pl-7 w-full focus:ring-2 focus:ring-emerald-400 outline-none"
+    />
+  </div>
+</div>
 
             <select
               name="unidad_medida"
@@ -476,11 +503,14 @@ if (rows.length > 0) {
           ))}
         </div>
 
-        {/* 🧮 Tabla */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[50vh] w-full scroll-suave rounded-lg">
-          <table className="min-w-full bg-white border border-gray-200 shadow-md rounded">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left">
+
+
+           {/* 🧮 Tabla de productos con indicadores visuales */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[50vh] w-full scroll-suave rounded-lg border border-gray-200 shadow-sm bg-white">
+          <table className="min-w-full border-collapse">
+            {/* 🔹 Encabezado fijo: debe estar DENTRO de <table> */}
+            <thead className="sticky top-0 z-10 bg-white shadow-sm">
+              <tr className="border-b text-left">
                 <th className="py-2 px-4 border-b">Nombre</th>
                 <th className="py-2 px-4 border-b text-center">Costo</th>
                 <th className="py-2 px-4 border-b text-center">Venta</th>
@@ -490,47 +520,79 @@ if (rows.length > 0) {
                 <th className="py-2 px-4 border-b text-center">Acciones</th>
               </tr>
             </thead>
+
             <tbody>
-              {productosFiltrados.map((p) => (
-                <tr
-                  key={p.id}
-                  className="hover:bg-indigo-50 cursor-pointer transition-all"
-                  onClick={() => {
-                    if (window.innerWidth < 768) {
-                      setProductoSeleccionado(p);
-                      setMostrarMenu(true);
-                    }
-                  }}
-                >
-                  <td className="py-2 px-4 border-b">{p.nombre}</td>
-                  <td className="py-2 px-4 border-b text-center">
-                    ${Number(p.precio_costo || 0).toFixed(2)}
-                  </td>
-                  <td className="py-2 px-4 border-b text-center text-green-700">
-                    ${Number(p.precio_venta || 0).toFixed(2)}
-                  </td>
-                  <td className="py-2 px-4 border-b text-center">
-                    {(p as any).categoria || "-"}
-                  </td>
-                  <td className="py-2 px-4 border-b text-center">{p.unidad_medida}</td>
-                  <td className="py-2 px-4 border-b text-center">{p.stock}</td>
-                  <td className="py-2 px-4 border-b text-center space-x-2">
-                    <button
-                      onClick={() => handleEditar(p)}
-                      className="bg-yellow-400 px-3 py-1 rounded text-white hover:bg-yellow-500 transition"
+              {/* 🔹 Ordenar por stock de mayor a menor */}
+              {[...productosFiltrados]
+                .sort((a, b) => Number(b.stock ?? 0) - Number(a.stock ?? 0))
+                .map((p) => {
+                  const stock = Number(p.stock ?? 0);
+                  const color =
+                    stock <= 3
+                      ? "text-red-600 font-semibold"
+                      : stock <= 10
+                      ? "text-yellow-600 font-semibold"
+                      : "text-green-700 font-semibold";
+                  const bgRow =
+                    stock <= 3
+                      ? "bg-red-50"
+                      : stock <= 10
+                      ? "bg-yellow-50"
+                      : "bg-white";
+
+                  return (
+                    <tr
+                      key={p.id}
+                      className={`${bgRow} hover:bg-emerald-50 transition-all cursor-pointer`}
+                      onClick={() => {
+                        if (window.innerWidth < 768) {
+                          setProductoSeleccionado(p);
+                          setMostrarMenu(true);
+                        }
+                      }}
                     >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleEliminar(p.id!)}
-                      className="bg-red-500 px-3 py-1 rounded text-white hover:bg-red-600 transition"
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtrados.length === 0 && (
+                      <td className="py-2 px-4 border-b">{p.nombre}</td>
+                      <td className="py-2 px-4 border-b text-center">
+                        ${Number(p.precio_costo || 0).toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 border-b text-center text-green-700">
+                        ${Number(p.precio_venta || 0).toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 border-b text-center">
+                        {(p as any).categoria || "-"}
+                      </td>
+                      <td className="py-2 px-4 border-b text-center">{p.unidad_medida}</td>
+
+                      {/* 🧭 Stock con color dinámico */}
+                      <td className={`py-2 px-4 border-b text-center ${color}`}>
+                        {stock > 10 ? "🟢" : stock > 3 ? "🟡" : "🔴"} {stock}
+                      </td>
+
+                      <td className="py-2 px-4 border-b text-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // evita abrir menú móvil por error
+                            handleEditar(p);
+                          }}
+                          className="bg-yellow-400 px-3 py-1 rounded text-white hover:bg-yellow-500 transition"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEliminar(p.id!);
+                          }}
+                          className="bg-red-500 px-3 py-1 rounded text-white hover:bg-red-600 transition"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+              {productosFiltrados.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center py-4 text-gray-500">
                     No hay productos registrados.
@@ -539,47 +601,47 @@ if (rows.length > 0) {
               )}
             </tbody>
           </table>
+        </div>
 
-          {/* 📱 Menú móvil */}
-          {mostrarMenu && productoSeleccionado && (
-            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-lg p-5 w-full max-w-xs text-center animate-fadeIn">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                  {productoSeleccionado.nombre}
-                </h3>
+        {/* 📱 Menú móvil */}
+        {mostrarMenu && productoSeleccionado && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-lg p-5 w-full max-w-xs text-center animate-fadeIn">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                {productoSeleccionado.nombre}
+              </h3>
 
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => {
-                      handleEditar(productoSeleccionado);
-                      setMostrarMenu(false);
-                    }}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-white py-2 rounded-xl transition"
-                  >
-                    ✏️ Editar
-                  </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    handleEditar(productoSeleccionado);
+                    setMostrarMenu(false);
+                  }}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-white py-2 rounded-xl transition"
+                >
+                  ✏️ Editar
+                </button>
 
-                  <button
-                    onClick={() => {
-                      handleEliminar(productoSeleccionado.id!);
-                      setMostrarMenu(false);
-                    }}
-                    className="bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl transition"
-                  >
-                    🗑️ Eliminar
-                  </button>
+                <button
+                  onClick={() => {
+                    handleEliminar(productoSeleccionado.id!);
+                    setMostrarMenu(false);
+                  }}
+                  className="bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl transition"
+                >
+                  🗑️ Eliminar
+                </button>
 
-                  <button
-                    onClick={() => setMostrarMenu(false)}
-                    className="mt-2 text-gray-600 hover:text-gray-900"
-                  >
-                    Cancelar
-                  </button>
-                </div>
+                <button
+                  onClick={() => setMostrarMenu(false)}
+                  className="mt-2 text-gray-600 hover:text-gray-900"
+                >
+                  Cancelar
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );
