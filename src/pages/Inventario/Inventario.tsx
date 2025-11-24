@@ -5,6 +5,7 @@ import {
   obtenerMovimientosInventario,
   type Producto,
 } from "../../services/db";
+import { toast } from "react-hot-toast";
 
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
 
@@ -30,6 +31,7 @@ export default function Inventario() {
         setMovimientos(movs);
       } catch (e: any) {
         setError(e.message ?? "Error cargando inventario");
+        toast.error(e.message ?? "Error cargando inventario");
       } finally {
         setLoading(false);
       }
@@ -37,24 +39,41 @@ export default function Inventario() {
   }, []);
 
   async function manejarMovimiento() {
+    setError(null);
+
     const cantidadNum = parseFloat(cantidad) || 0;
     if (!productoId || cantidadNum <= 0) {
-      setError("Selecciona un producto y una cantidad válida");
+      const msg = "Selecciona un producto y una cantidad válida";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
+    // Motivo por defecto si queda vacío
+    const motivoFinal = motivo.trim() || "AJUSTE DE INVENTARIO";
+
     try {
-      await registrarMovimientoInventario(productoId, tipo, cantidadNum, motivo);
+      await registrarMovimientoInventario(
+        productoId,
+        tipo,
+        cantidadNum,
+        motivoFinal
+      );
+
       setCantidad("");
       setMotivo("");
       setProductoId("");
+
       const prods = await obtenerProductos();
       const movs = await obtenerMovimientosInventario();
       setProductos(prods);
       setMovimientos(movs);
-      alert("✅ Movimiento registrado correctamente");
+
+      toast.success("✅ Movimiento registrado correctamente");
     } catch (e: any) {
-      setError(e.message ?? "Error al registrar movimiento");
+      const msg = e.message ?? "Error al registrar movimiento";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -85,7 +104,7 @@ export default function Inventario() {
               <option value="">Selecciona...</option>
               {productos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre}
+                  {p.id} - {p.nombre}
                 </option>
               ))}
             </select>
@@ -100,30 +119,30 @@ export default function Inventario() {
               }
               className="w-full rounded-lg border px-3 py-2"
             >
-              <option value="entrada">Entrada</option>
-              <option value="salida">Salida</option>
+              <option value="entrada">Entrada (suma stock)</option>
+              <option value="salida">Salida (resta stock)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Cantidad</label>
             <input
-  type="number"
-  placeholder="0"
-  value={cantidad}
-  onChange={(e) => {
-    const val = e.target.value;
-    setCantidad(val === "" ? "" : val); // permite borrar todo
-  }}
-  className="border rounded-lg p-2 w-full"
-/>
+              type="number"
+              placeholder="0"
+              value={cantidad}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCantidad(val === "" ? "" : val); // permite borrar todo
+              }}
+              className="border rounded-lg p-2 w-full"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Motivo</label>
             <input
               type="text"
-              placeholder="Motivo (opcional)"
+              placeholder="Motivo (dejar vacío = AJUSTE DE INVENTARIO)"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               className="w-full rounded-lg border px-3 py-2"
@@ -206,7 +225,9 @@ export default function Inventario() {
                     <td className="p-2">{m.producto_nombre}</td>
                     <td
                       className={`p-2 font-semibold ${
-                        m.tipo === "entrada" ? "text-emerald-700" : "text-red-600"
+                        m.tipo === "entrada"
+                          ? "text-emerald-700"
+                          : "text-red-600"
                       }`}
                     >
                       {m.tipo}

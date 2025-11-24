@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
-import UserDropdown from "../components/header/UserDropdown";
+//import UserDropdown from "../components/header/UserDropdown";
 import { useEffect, useState } from "react";
 
 export default function AppHeader() {
@@ -57,7 +57,7 @@ export default function AppHeader() {
       {/* 🌙 / 👤 Acciones */}
       <div className="flex items-center gap-3">
         <ThemeToggleButton />
-        <UserDropdown />
+    {/*  // <UserDropdown /> */}
       </div>
     </header>
   );

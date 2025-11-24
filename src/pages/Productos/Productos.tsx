@@ -22,6 +22,7 @@ const dexieDB = new Dexie("facturacionDB");
 dexieDB.version(1).stores({
   productos:
     "++id, nombre, precio_costo, precio_venta, unidad_medida, stock, categoria",
+     categorias: "++id, nombre", // ✅ FALTA
 });
 
 interface Producto {
@@ -39,7 +40,7 @@ export default function Productos() {
      🔹 Estados
   ======================================================= */
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [filtrados, setFiltrados] = useState<Producto[]>([]);
+  const [, setFiltrados] = useState<Producto[]>([]);
   const [busqueda, ] = useState("");
   const [formData, setFormData] = useState<Producto>({
     nombre: "",
@@ -111,56 +112,75 @@ export default function Productos() {
     }
 
   // 💾 Guardar en SQLite o Dexie
-if (rows.length > 0) {
-  const db = await initSQLite();
+  // 💾 Guardar en SQLite o Dexie
+  if (rows.length > 0) {
+    const db = await initSQLite();
 
-  // 🧠 Crear un Set para guardar las categorías únicas
-  const categoriasSet = new Set<string>();
+    // 🧠 Crear un Set para guardar las categorías únicas
+    const categoriasSet = new Set<string>();
 
-  for (const item of rows as any[]) {
-    if (item.categoria) categoriasSet.add(item.categoria.trim());
+    for (const raw of rows as any[]) {
+      // 👇 Normalizamos las columnas del Excel
+      const item = {
+        nombre: raw.nombre ?? raw.Nombre ?? "",
+        categoria: raw.categoria ?? raw.Categoria ?? raw["Categoría"] ?? null,
+        precio_costo: Number(
+          raw.precio_costo ?? raw.Costo ?? raw["Precio costo"] ?? 0
+        ),
+        precio_venta: Number(
+          raw.precio_venta ?? raw.Venta ?? raw["Precio venta"] ?? 0
+        ),
+        unidad_medida:
+          raw.unidad_medida ?? raw.Unidad ?? raw["Unidad de medida"] ?? "unidad",
+        stock: Number(raw.stock ?? raw.Stock ?? 0),
+      };
 
+      if (item.categoria) categoriasSet.add(item.categoria.trim());
+
+      if (db) {
+        await db.run(
+          `INSERT OR REPLACE INTO productos 
+          (nombre, categoria, precio_costo, precio_venta, unidad_medida, stock)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            item.nombre,
+            item.categoria,
+            item.precio_costo,
+            item.precio_venta,
+            item.unidad_medida,
+            item.stock,
+          ]
+        );
+      } else {
+        await dexieDB.table("productos").put(item);
+      }
+    }
+
+    // 🗂️ Insertar categorías sin duplicar
     if (db) {
-      await db.run(
-        `INSERT OR REPLACE INTO productos 
-        (nombre, categoria, precio_costo, precio_venta, unidad_medida, stock)
-        VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          item.nombre,
-          item.categoria,
-          item.precio_costo,
-          item.precio_venta,
-          item.unidad_medida,
-          item.stock,
-        ]
-      );
+      for (const nombre of categoriasSet) {
+        await db.run(`INSERT OR IGNORE INTO categorias (nombre) VALUES (?)`, [
+          nombre,
+        ]);
+      }
     } else {
-      await dexieDB.table("productos").put(item);
+      for (const nombre of categoriasSet) {
+        await dexieDB.table("categorias").put({ nombre });
+      }
     }
-  }
 
-  // 🗂️ Insertar categorías sin duplicar
-  if (db) {
-    for (const nombre of categoriasSet) {
-      await db.run(`INSERT OR IGNORE INTO categorias (nombre) VALUES (?)`, [nombre]);
-    }
+    // 🔄 Recargar productos y categorías
+    await cargarProductos();
+    const cats = await obtenerCategorias();
+    setCategorias(cats.map((c) => c.nombre));
+
+    toast.success(
+      `✅ ${rows.length} productos importados correctamente (${categoriasSet.size} categorías).`
+    );
   } else {
-    for (const nombre of categoriasSet) {
-      await dexieDB.table("categorias").put({ nombre });
-    }
+    toast.error("⚠️ No se encontraron filas en el archivo Excel.");
   }
 
-  // 🔄 Recargar productos y categorías
-  await cargarProductos();
-  const cats = await obtenerCategorias();
-  setCategorias(cats.map((c) => c.nombre));
-
-  toast.success(
-    `✅ ${rows.length} productos importados correctamente (${categoriasSet.size} categorías).`
-  );
-} else {
-  toast.error("⚠️ No se encontraron filas en el archivo Excel.");
-}
 } catch (error) {
   console.error("❌ Error al importar Excel:", error);
   toast.error("Error al procesar el archivo. Verifica el formato.");
@@ -446,6 +466,34 @@ if (rows.length > 0) {
               className="border p-2 rounded"
             />
           </div>
+
+          {/* 💡 Resumen rápido de precios */}
+<div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+  <div className="rounded-md bg-gray-50 px-3 py-2">
+    <span className="text-gray-500">Costo: </span>
+    <b>${Number(formData.precio_costo || 0).toFixed(2)}</b>
+  </div>
+  <div className="rounded-md bg-gray-50 px-3 py-2">
+    <span className="text-gray-500">Venta: </span>
+    <b>${Number(formData.precio_venta || 0).toFixed(2)}</b>
+  </div>
+  <div className="rounded-md px-3 py-2"
+       style={{background: '#f0fff4'}}>
+    <span className="text-gray-600">Ganancia: </span>
+    <b className="text-emerald-700">
+      ${(
+        Number(formData.precio_venta || 0) - Number(formData.precio_costo || 0)
+      ).toFixed(2)}
+    </b>
+  </div>
+</div>
+
+{/* ⚠️ Alerta si venta < costo */}
+{Number(formData.precio_venta || 0) < Number(formData.precio_costo || 0) && (
+  <div className="mt-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-red-700 text-sm">
+    Estás vendiendo por debajo del costo.
+  </div>
+)}
 
           <div className="mt-4 flex gap-2">
             <button

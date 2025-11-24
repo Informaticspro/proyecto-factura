@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { ejecutarConsulta, dexieDB, isNative } from "../../services/db";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import ReporteInventario from "../ReporteInventario/ReporteInventario";
+
+type Pestaña = "ventas" | "inventario" | "resumen";
 
 export default function Reportes() {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -10,7 +13,7 @@ export default function Reportes() {
   const [hasta, setHasta] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [, setError] = useState<string | null>(null);
-  const [pestaña, setPestaña] = useState<"ventas" | "inventario">("ventas");
+  const [pestaña, setPestaña] = useState<Pestaña>("ventas");
 
   // ================================
   // 📊 Cargar Ventas
@@ -162,29 +165,41 @@ export default function Reportes() {
         >
           Movimientos de Inventario
         </button>
+        <button
+          onClick={() => setPestaña("resumen")}
+          className={`px-4 py-2 rounded-lg ${
+            pestaña === "resumen"
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-100 hover:bg-gray-200"
+          }`}
+        >
+          Resumen Inventario
+        </button>
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col md:flex-row md:items-end gap-3 mb-6">
-        <div>
-          <label className="text-sm font-medium text-gray-700">Desde</label>
-          <input
-            type="date"
-            className="border rounded-lg p-2 w-full"
-            value={desde}
-            onChange={(e) => setDesde(e.target.value)}
-          />
+      {pestaña !== "resumen" && (
+        <div className="flex flex-col md:flex-row md:items-end gap-3 mb-6">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Desde</label>
+            <input
+              type="date"
+              className="border rounded-lg p-2 w-full"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Hasta</label>
+            <input
+              type="date"
+              className="border rounded-lg p-2 w-full"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+            />
+          </div>
         </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700">Hasta</label>
-          <input
-            type="date"
-            className="border rounded-lg p-2 w-full"
-            value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Contenido de pestañas */}
       {pestaña === "ventas" ? (
@@ -193,11 +208,13 @@ export default function Reportes() {
           loading={loading}
           exportarExcel={exportarExcelVentas}
         />
-      ) : (
+      ) : pestaña === "inventario" ? (
         <SeccionMovimientos
           movimientos={filtrar(movimientos)}
           exportarExcel={exportarExcelMovimientos}
         />
+      ) : (
+        <ReporteInventario />
       )}
     </div>
   );
