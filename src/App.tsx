@@ -1,60 +1,78 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
-import AppLayout from "./layout/AppLayout";
+import { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 
-// ✅ Dashboard existente
-import Home from "./pages/Dashboard/Home";
+import AppLayout from "./layout/AppLayout";
 
-// ✅ Tus nuevas páginas
+// 🔹 Intro tipo Netflix
+import SplashIntro from "./components/common/SplashIntro";
+
+// 🔹 Sistema de licencia
+import Licencia from "./pages/Licencia/Licencia";
+import { estaLicenciada } from "./services/db/licenciaService";
+
+// 🔹 Tus páginas
+import Home from "./pages/Dashboard/Home";
 import Productos from "./pages/Productos/Productos";
 import Ventas from "./pages/Ventas/Ventas";
 import Inventario from "./pages/Inventario/Inventario";
 import Finanzas from "./pages/Finanzas/Finanzas";
 import Reportes from "./pages/Reportes/Reportes";
 import Configuracion from "./pages/Configuracion/Configuracion";
-
-
-// ✅ Extra
 import Calendar from "./pages/Calendar";
 import UserProfiles from "./pages/UserProfiles";
+import DebugDB from "./pages/DebugDB";
 import NotFound from "./pages/OtherPage/NotFound";
 
-//temporal
-import DebugDB from "./pages/DebugDB";
+export default function App() {
+  const [checked, setChecked] = useState(false);
+  const [licOk, setLicOk] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
-function App() {
+  // 🔍 Revisar licencia al iniciar
+  useEffect(() => {
+    (async () => {
+      const ok = await estaLicenciada();
+      setLicOk(ok);
+      setChecked(true);
+    })();
+  }, []);
+
+  // 🎬 Intro tipo Netflix
+  if (showIntro) {
+    return <SplashIntro onFinish={() => setShowIntro(false)} />;
+  }
+
+  // 🔐 Si no hay licencia válida, mostramos solo la pantalla de licencia
+  if (!checked || !licOk) {
+    return <Licencia />;
+  }
+
+  // ✅ Aquí ya estamos licenciados → mostrar la app normal
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        {/* Layout principal (Sidebar + Header) */}
-        <Route element={<AppLayout />}>
-          {/* Dashboard */}
-          <Route index path="/" element={<Home />} />
+  <>
+    <ScrollToTop />
 
-          {/* Otras páginas */}
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/profile" element={<UserProfiles />} />
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route index path="/" element={<Home />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/profile" element={<UserProfiles />} />
 
-          {/* Gestión */}
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/ventas" element={<Ventas />} />
-          <Route path="/inventario" element={<Inventario />} />
-          <Route path="/finanzas" element={<Finanzas />} />
-          <Route path="/reportes" element={<Reportes />} />
-          <Route path="/configuracion" element={<Configuracion />} />
+        <Route path="/productos" element={<Productos />} />
+        <Route path="/ventas" element={<Ventas />} />
+        <Route path="/inventario" element={<Inventario />} />
+        <Route path="/finanzas" element={<Finanzas />} />
+        <Route path="/reportes" element={<Reportes />} />
+        <Route path="/configuracion" element={<Configuracion />} />
+        
+        <Route path="/estadisticas" element={<div>Estadísticas (próximamente)</div>} />
+        <Route path="/proyecciones" element={<div>Proyecciones (próximamente)</div>} />
+        <Route path="/debug" element={<DebugDB />} />
+      </Route>
 
-          {/* 🚀 Futuro (ya lo dejamos preparado) */}
-          <Route path="/estadisticas" element={<div>Estadísticas (próximamente)</div>} />
-          <Route path="/proyecciones" element={<div>Proyecciones (próximamente)</div>} />
-          <Route path="/debug" element={<DebugDB />} />
-        </Route>
-
-        {/* Fallback 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
-  );
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </>
+);
 }
-
-export default App;

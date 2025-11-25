@@ -20,6 +20,7 @@ dexieDB.version(4).stores({
   ventas: "++id, fecha, total",
   detalle_ventas: "++id, venta_id, producto_id, cantidad, precio_unitario, subtotal",
   movimientos_inventario: "++id, producto_id, tipo, cantidad, fecha, motivo",
+    licencia: "id, clave, activada_en, vence_el",
 });
 dexieDB.open().then(() => console.log("✅ Dexie inicializada"));
 
@@ -103,6 +104,15 @@ export async function initSQLite() {
         FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
       );
     `);
+
+    await db.execute(`
+  CREATE TABLE IF NOT EXISTS licencia (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    clave TEXT NOT NULL,
+    activada_en TEXT NOT NULL,
+    vence_el TEXT
+  );
+`);
 
     console.log("✅ Base de datos SQLite inicializada correctamente");
     return db;

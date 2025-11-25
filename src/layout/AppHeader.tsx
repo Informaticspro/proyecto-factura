@@ -21,10 +21,15 @@ export default function AppHeader() {
 
   return (
     <header
-      className="sticky top-0 z-50 flex items-center justify-between px-4 py-2
-                 bg-gradient-to-r from-[#0B1525] via-[#0E2B4A] to-[#0066FF]
-                 text-white shadow-lg backdrop-blur-md"
-    >
+   
+  className="sticky top-0 z-50 flex items-center justify-between px-4 py-2
+             bg-gradient-to-r from-[#0B1525] via-[#0E2B4A] to-[#0066FF]
+             text-white shadow-lg backdrop-blur-md"
+  style={{
+    paddingTop: "env(safe-area-inset-top)",
+  }}
+>
+  
       {/* ☰ Menú */}
       <button
         onClick={handleToggle}

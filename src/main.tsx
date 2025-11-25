@@ -8,18 +8,22 @@ import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { Toaster } from "react-hot-toast";
+import { BrowserRouter } from "react-router-dom"; // 👈 NUEVO
 
 // 🧠 Render principal
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      {/* 🌐 Proveedor global de metadatos */}
-      <AppWrapper>
-        <App />
-      </AppWrapper>
+      {/* ✅ Router global */}
+      <BrowserRouter>
+        {/* 🌐 Proveedor global de metadatos */}
+        <AppWrapper>
+          <App />
+        </AppWrapper>
 
-      {/* 🔔 Toaster global de notificaciones */}
-      <Toaster position="top-right" />
+        {/* 🔔 Toaster global de notificaciones */}
+        <Toaster position="top-right" />
+      </BrowserRouter>
     </ThemeProvider>
   </StrictMode>
 );
